@@ -1,0 +1,70 @@
+rules_version = '2';
+
+// ============================================================================
+// PROTOTYPE-LEVEL RULES ONLY.
+// ============================================================================
+// Everything below only checks "is this user authenticated at all" — every
+// signed-in staff member (including the anonymous prototype accounts) can
+// read/write every client, case, deadline, and billing record.
+//
+// TODO before this touches real client data:
+//   - Add a `staff/{uid}` doc with role + assignedCaseIds (or Firebase custom
+//     claims) and gate reads/writes on it, so conflict-of-interest walls and
+//     "not everyone sees every case" are enforced at the database layer, not
+//     just hidden in the UI. A UI-only restriction is not real access control
+//     — anyone with devtools can still query Firestore directly.
+//   - Add write-time validation (e.g. billing.caseId must reference an
+//     existing case, deadline.confirmedBy must be a real staff uid) so bad
+//     writes can't slip in from a compromised or buggy client.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    match /clients/{clientId} {
+      allow read, write: if signedIn();
+    }
+
+    match /cases/{caseId} {
+      allow read, write: if signedIn();
+    }
+
+    match /deadlines/{deadlineId} {
+      allow read, write: if signedIn();
+    }
+
+    // 開庭通知（開庭行事曆）— 同樣是原型級規則，僅檢查登入，尚無案件層級的
+    // 存取控制，見檔案最上方 TODO。
+    match /hearings/{hearingId} {
+      allow read, write: if signedIn();
+    }
+
+    match /billing/{entryId} {
+      allow read, write: if signedIn();
+    }
+
+    match /files/{fileId} {
+      allow read, write: if signedIn();
+    }
+
+    // 結案案件表（取代原本的 Google Sheet「結案簡表」）— 同樣是原型級規則。
+    match /closedCases/{closedCaseId} {
+      allow read, write: if signedIn();
+    }
+
+    // _meta 目前只用來存一個「歷史資料是否已匯入」的標記文件
+    // （_meta/closedCasesImport），避免同一份 Google Sheet 資料被重複匯入。
+    match /_meta/{metaId} {
+      allow read, write: if signedIn();
+    }
+
+    // AI-disclosure consent record — one doc per staff member. Unlike the
+    // rest of this file, this one IS scoped to the individual: a user should
+    // only be able to read/write their own consent record, not anyone
+    // else's. This is the one real per-user check in this prototype's rules.
+    match /aiConsent/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+  }
+}

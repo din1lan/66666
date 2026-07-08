@@ -1,0 +1,28 @@
+rules_version = '2';
+
+// ============================================================================
+// PROTOTYPE-LEVEL RULES ONLY — READ THIS BEFORE PUTTING REAL CASE FILES HERE.
+// ============================================================================
+// This is the single highest-risk file in the whole project. A mistake here
+// means one client's confidential case PDF becomes readable by anyone with a
+// signed-in session — including someone at the firm with no business on that
+// case, or a link that leaks outside the firm.
+//
+// Current behavior: any authenticated user can read/write any file under
+// cases/. That is ONLY acceptable for the prototype (anonymous emulator
+// accounts, no real client data). Before uploading real case files:
+//   - Add per-case authorization: check a `staff/{uid}.assignedCaseIds`
+//     Firestore doc (via `firestore.get(...)`) or a custom claim before
+//     allowing read/write on cases/{caseId}/**.
+//   - Consider whether paralegals/assistants need write (upload) but not
+//     read on privileged attorney work product.
+//   - Turn on Storage access audit logging so "who opened this PDF and when"
+//     is answerable — law firms often need this for chain-of-custody /
+//     privilege log purposes.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /cases/{caseId}/{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

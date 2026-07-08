@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>事務所工作台 — 目前進度預覽</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          navy: { 950: '#0a1128', 900: '#0f172a', 800: '#1e293b', 700: '#334155' }
+        }
+      }
+    }
+  }
+</script>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif; }
+  .page { display: none; }
+  .page.active { display: flex; flex-direction: column; animation: fadeIn .2s ease-out; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+  .placeholder-block { background-image: repeating-linear-gradient(45deg, #f1f5f9, #f1f5f9 10px, #e2e8f0 10px, #e2e8f0 20px); }
+  .lawyer-folder.active { background-color: #1e293b; color: #fff; }
+  .lawyer-folder.active .folder-count { background-color: rgba(255,255,255,.2); color: #fff; }
+  .resizer { width: 6px; cursor: col-resize; background-color: #e2e8f0; flex-shrink: 0; position: relative; }
+  .resizer:hover, .resizer.dragging { background-color: #3b82f6; }
+  .resizer::after { content:""; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:2px; height:32px; background:#94a3b8; border-radius:2px; }
+  body.resizing { cursor: col-resize; user-select: none; }
+  .flash-ring { box-shadow: 0 0 0 3px #93c5fd; transition: box-shadow .4s; }
+  .src-tag { display:inline-flex; align-items:center; gap:3px; font-size:11px; font-weight:500; border-radius:4px; padding:1px 7px; white-space:nowrap; vertical-align:middle; }
+  .src-verified { color:#047857; background:#ecfdf5; border:1px solid #a7f3d0; }
+  .src-inferred { color:#b45309; background:#fffbeb; border:1px solid #fde68a; }
+  .src-generated { color:#be123c; background:#fff1f2; border:1px solid #fecdd3; cursor:pointer; }
+  .src-generated:hover { background:#ffe4e6; }
+  .cite-tag { display:inline-flex; align-items:center; gap:3px; font-size:11px; color:#2563eb; background:#eff6ff; border:1px solid #bfdbfe; border-radius:4px; padding:1px 6px; cursor:pointer; white-space:nowrap; }
+  .cite-tag:hover { background:#dbeafe; }
+  #verify-modal, #consent-modal { display:none; }
+  #verify-modal.show, #consent-modal.show { display:flex; }
+</style>
+</head>
+<body class="bg-slate-100 text-slate-800">
+
+<div class="fixed top-3 right-3 z-[60] text-[11px] bg-navy-900 text-slate-200 px-3 py-1.5 rounded-full shadow-lg">
+  靜態預覽（非實際運作版本）— 反映目前 React 專案的設計進度
+</div>
+
+<div class="flex h-screen overflow-hidden">
+  <!-- 側邊欄 -->
+  <aside class="w-64 bg-navy-900 text-slate-300 flex flex-col flex-shrink-0">
+    <div class="flex items-center gap-3 px-6 py-6 border-b border-white/10">
+      <div class="w-9 h-9 rounded-md bg-blue-600 flex items-center justify-center flex-shrink-0">
+        <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v18M4.5 8.5L12 3l7.5 5.5M6 8.5v9a1 1 0 001 1h10a1 1 0 001-1v-9" />
+        </svg>
+      </div>
+      <div>
+        <p class="text-white font-semibold text-sm leading-tight">法律事務所</p>
+        <p class="text-slate-400 text-xs leading-tight">案件管理系統</p>
+      </div>
+    </div>
+    <nav class="flex-1 py-4 space-y-1 overflow-y-auto">
+      <button data-target="dashboard" class="nav-btn w-full flex items-center gap-3 px-6 py-3 text-left hover:bg-white/5 border-l-2 border-transparent">
+        <svg class="nav-icon w-5 h-5 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+        <span class="nav-label text-sm font-medium">首頁總覽</span>
+      </button>
+      <button data-target="cases" class="nav-btn w-full flex items-center gap-3 px-6 py-3 text-left hover:bg-white/5 border-l-2 border-transparent">
+        <svg class="nav-icon w-5 h-5 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+        <span class="nav-label text-sm font-medium">案件與時效</span>
+      </button>
+      <button data-target="crm" class="nav-btn w-full flex items-center gap-3 px-6 py-3 text-left hover:bg-white/5 border-l-2 border-transparent">
+        <svg class="nav-icon w-5 h-5 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 100-8 4 4 0 000 8zm6 3c0 1.1-2.69 2-6 2s-6-.9-6-2 2.69-2 6-2 6 .9 6 2z" /></svg>
+        <span class="nav-label text-sm font-medium">客戶資料 (CRM)</span>
+      </button>
+      <button data-target="files" class="nav-btn w-full flex items-center gap-3 px-6 py-3 text-left hover:bg-white/5 border-l-2 border-transparent">
+        <svg class="nav-icon w-5 h-5 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+        <span class="nav-label text-sm font-medium">線上卷宗與 AI 分析</span>
+      </button>
+      <button data-target="billing" class="nav-btn w-full flex items-center gap-3 px-6 py-3 text-left hover:bg-white/5 border-l-2 border-transparent">
+        <svg class="nav-icon w-5 h-5 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.66 0-3 .9-3 2s1.34 2 3 2 3 .9 3 2-1.34 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V6m0 2v8m0 0v2m0-2c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+        <span class="nav-label text-sm font-medium">財務與代墊款</span>
+      </button>
+      <div class="px-6 pt-4 pb-1"><p class="text-xs uppercase tracking-wider text-slate-500">智慧工具</p></div>
+      <button data-target="ai-review" class="nav-btn w-full flex items-center gap-3 px-6 py-3 text-left hover:bg-white/5 border-l-2 border-transparent">
+        <svg class="nav-icon w-5 h-5 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+        <span class="nav-label text-sm font-medium">AI 閱卷與策略分析</span>
+      </button>
+    </nav>
+    <div class="px-6 py-3 text-[11px] leading-relaxed text-slate-500 border-t border-white/10">
+      原型階段：資料庫規則僅要求「已登入」，尚未做案件層級的權限區隔（利益衝突迴避）。正式上線前必須補上。
+    </div>
+    <div class="px-6 py-4 border-t border-white/10 flex items-center gap-3">
+      <div class="w-8 h-8 rounded-full bg-slate-600 flex items-center justify-center text-xs font-medium text-white">陳</div>
+      <div class="leading-tight">
+        <p class="text-sm text-white">陳律師</p>
+        <p class="text-xs text-slate-400">主持律師（原型帳號）</p>
+      </div>
+    </div>
+  </aside>
+
+  <!-- 內容區 -->
+  <main class="flex-1 overflow-hidden flex flex-col bg-slate-50">
+
+    <!-- 首頁總覽 -->
+    <section id="page-dashboard" class="page active flex-1 overflow-y-auto px-10 py-8">
+      <div class="mb-8">
+        <h1 class="text-2xl font-bold text-slate-900">首頁總覽</h1>
+        <p class="text-slate-500 text-sm mt-1" id="dash-date"></p>
+      </div>
+      <div class="grid grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-lg border border-slate-200 p-5">
+          <p class="text-xs text-slate-500 mb-2">進行中案件</p>
+          <p class="text-2xl font-bold text-navy-900">6</p>
+        </div>
+        <div class="bg-white rounded-lg border border-slate-200 p-5">
+          <p class="text-xs text-slate-500 mb-2">本週時效提醒</p>
+          <p class="text-2xl font-bold text-red-600">2</p>
+        </div>
+        <div class="bg-white rounded-lg border border-slate-200 p-5">
+          <p class="text-xs text-slate-500 mb-2">未收律師費（估）</p>
+          <p class="text-2xl font-bold text-navy-900">NT$ 860,000</p>
+        </div>
+        <div class="bg-white rounded-lg border border-slate-200 p-5">
+          <p class="text-xs text-slate-500 mb-2">本月新增客戶</p>
+          <p class="text-2xl font-bold text-navy-900">3</p>
+        </div>
+      </div>
+      <div class="grid grid-cols-3 gap-4">
+        <div class="col-span-2 bg-white rounded-lg border border-slate-200 p-5">
+          <p class="text-sm font-medium text-slate-700 mb-3">案件進度圖表</p>
+          <div class="placeholder-block h-64 rounded border border-slate-200 flex items-center justify-center text-xs text-slate-400 text-center px-6">
+            尚未實作（真實 App 中為佔位區塊，之後可用 recharts 依案件狀態/律師分佈畫圖）
+          </div>
+        </div>
+        <div class="bg-white rounded-lg border border-slate-200 p-5">
+          <p class="text-sm font-medium text-slate-700 mb-3">近期活動</p>
+          <div class="placeholder-block h-64 rounded border border-slate-200 flex items-center justify-center text-xs text-slate-400 text-center px-4">
+            尚未實作（之後可接稽核紀錄，顯示「誰在何時做了什麼」）
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 案件與時效 -->
+    <section id="page-cases" class="page flex-1 overflow-y-auto px-10 py-8">
+      <div class="mb-6 flex items-end justify-between">
+        <div>
+          <h1 class="text-2xl font-bold text-slate-900">案件與時效</h1>
+          <p class="text-slate-500 text-sm mt-1">依承辦律師分類管理案件，避免案件混雜</p>
+        </div>
+        <button class="flex items-center gap-2 bg-navy-900 hover:bg-navy-800 text-white text-sm font-medium px-4 py-2 rounded-md">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
+          新增案件
+        </button>
+      </div>
+      <div class="flex gap-5">
+        <div class="w-64 flex-shrink-0">
+          <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+            <div class="px-4 py-3 border-b border-slate-200"><span class="text-sm font-semibold text-slate-700">承辦律師</span></div>
+            <div class="p-2 space-y-1" id="lawyer-folders"></div>
+          </div>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+            <div class="px-5 py-3 border-b border-slate-200 flex items-center justify-between">
+              <span id="cases-title" class="text-sm font-semibold text-slate-700">全部案件</span>
+              <span id="cases-subtitle" class="text-xs text-slate-400"></span>
+            </div>
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="text-left text-xs text-slate-500 border-b border-slate-100 bg-slate-50">
+                  <th class="px-5 py-2.5 font-medium">案號</th>
+                  <th class="px-5 py-2.5 font-medium">案件名稱</th>
+                  <th class="px-5 py-2.5 font-medium">客戶</th>
+                  <th class="px-5 py-2.5 font-medium">承辦律師</th>
+                  <th class="px-5 py-2.5 font-medium">狀態</th>
+                  <th class="px-5 py-2.5 font-medium">時效倒數</th>
+                </tr>
+              </thead>
+              <tbody id="cases-tbody" class="divide-y divide-slate-100"></tbody>
+            </table>
+          </div>
+          <div class="grid grid-cols-2 gap-4 mt-4">
+            <div class="bg-white rounded-lg border border-slate-200 p-5">
+              <p class="text-sm font-medium text-slate-700 mb-3">時效行事曆（月曆）</p>
+              <div class="placeholder-block h-40 rounded border border-slate-200 flex items-center justify-center text-xs text-slate-400">
+                真實 App 為互動月曆，紅框代表 3 天內到期
+              </div>
+            </div>
+            <div class="bg-white rounded-lg border border-slate-200 p-5">
+              <p class="text-sm font-medium text-slate-700 mb-3">新增時效</p>
+              <div class="placeholder-block h-40 rounded border border-slate-200 flex items-center justify-center text-xs text-slate-400 text-center px-4">
+                真實 App：選案件＋事件類型自動試算期限，需律師按「確認」才生效
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 客戶資料 CRM -->
+    <section id="page-crm" class="page flex-1 overflow-hidden">
+      <div class="flex h-full">
+        <div class="w-72 flex-shrink-0 border-r border-slate-200 bg-white flex flex-col">
+          <div class="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+            <h2 class="font-semibold text-slate-800">客戶清單</h2>
+            <button class="text-xs px-2 py-1 rounded bg-indigo-600 text-white">+ 新增客戶</button>
+          </div>
+          <div class="flex-1 overflow-y-auto" id="crm-list"></div>
+        </div>
+        <div class="flex-1 flex flex-col">
+          <div class="px-6 py-4 border-b border-slate-200 bg-white">
+            <h1 class="text-lg font-semibold text-slate-800">客戶與案件管理</h1>
+            <p class="text-xs text-slate-400 mt-0.5">共 4 位客戶</p>
+          </div>
+          <div class="flex-1 overflow-y-auto p-6 space-y-6" id="crm-detail"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 線上卷宗與 AI 分析（檔案管理） -->
+    <section id="page-files" class="page flex-1 overflow-y-auto p-6 space-y-6">
+      <div>
+        <h1 class="text-lg font-semibold text-slate-800">線上卷宗與 AI 分析</h1>
+        <p class="text-xs text-slate-400 mt-0.5">PDF 卷宗依案件歸檔，點擊檔案可直接在網頁內閱覽，無需下載</p>
+      </div>
+      <section class="bg-white rounded-lg border border-slate-200 p-5 max-w-md">
+        <label class="text-xs text-slate-500 space-y-1 block">
+          <span>選擇案件</span>
+          <select class="w-full text-sm border rounded px-2 py-1.5">
+            <option>114訴字1024 · 損害賠償（車禍）</option>
+          </select>
+        </label>
+      </section>
+      <div class="border-2 border-dashed border-slate-300 bg-slate-50 rounded-lg p-6 text-center">
+        <div class="text-3xl mb-1">📄</div>
+        <div class="text-sm text-slate-600">拖曳 PDF 卷宗到這裡，或點擊選擇檔案</div>
+        <div class="text-xs text-slate-400 mt-1">上傳後將自動歸類於此案件的資料夾</div>
+      </div>
+      <section class="bg-white rounded-lg border border-slate-200 p-5">
+        <h3 class="font-semibold text-slate-800 mb-3">卷宗檔案（2）</h3>
+        <ul class="divide-y">
+          <li class="py-2 flex items-center justify-between gap-3">
+            <span class="text-sm text-indigo-700 flex items-center gap-2 min-w-0 truncate">📄 民事起訴狀_原告王大明.pdf</span>
+            <div class="flex items-center gap-3 flex-shrink-0">
+              <span class="text-xs text-slate-400">312 KB</span>
+              <button onclick="goTo('ai-review')" class="text-xs px-2 py-1 rounded bg-blue-50 text-blue-700 border border-blue-200">傳送至 AI 分析 →</button>
+            </div>
+          </li>
+          <li class="py-2 flex items-center justify-between gap-3">
+            <span class="text-sm text-indigo-700 flex items-center gap-2 min-w-0 truncate">📄 道路交通事故初步分析研判表.pdf</span>
+            <div class="flex items-center gap-3 flex-shrink-0">
+              <span class="text-xs text-slate-400">88 KB</span>
+              <button onclick="goTo('ai-review')" class="text-xs px-2 py-1 rounded bg-blue-50 text-blue-700 border border-blue-200">傳送至 AI 分析 →</button>
+            </div>
+          </li>
+        </ul>
+      </section>
+    </section>
+
+    <!-- 財務與代墊款 -->
+    <section id="page-billing" class="page flex-1 overflow-y-auto p-6 space-y-6">
+      <div>
+        <h1 class="text-lg font-semibold text-slate-800">財務與代墊款</h1>
+        <p class="text-xs text-slate-400 mt-0.5">每一筆帳目都強制關聯到特定案號</p>
+      </div>
+      <div class="grid grid-cols-3 gap-4">
+        <div class="bg-white rounded-lg border border-slate-200 p-5">
+          <p class="text-xs text-slate-500 mb-2">本月代墊款總額</p>
+          <p class="text-2xl font-bold text-navy-900">NT$ 18,500</p>
+        </div>
+        <div class="bg-white rounded-lg border border-slate-200 p-5">
+          <p class="text-xs text-slate-500 mb-2">待收款項（未結案）</p>
+          <p class="text-2xl font-bold text-red-700">NT$ 860,000</p>
+        </div>
+        <div class="bg-white rounded-lg border border-slate-200 p-5">
+          <p class="text-xs text-slate-500 mb-2">已結案已收款</p>
+          <p class="text-2xl font-bold text-emerald-700">NT$ 420,000</p>
+        </div>
+      </div>
+      <section class="bg-white rounded-lg border border-slate-200 p-5 max-w-md">
+        <label class="text-xs text-slate-500 space-y-1 block">
+          <span>選擇案件以查看/記錄帳務</span>
+          <select class="w-full text-sm border rounded px-2 py-1.5"><option>114訴字1024 · 損害賠償（車禍）</option></select>
+        </label>
+      </section>
+      <section class="bg-white rounded-lg border border-slate-200 p-5">
+        <h3 class="font-semibold text-slate-800 mb-3">律師費概況 — 114訴字1024</h3>
+        <div class="grid grid-cols-3 gap-3 text-sm">
+          <div class="border rounded p-3"><div class="text-xs text-slate-400">簽約總額</div><div class="text-lg font-semibold">NT$ 200,000</div></div>
+          <div class="border rounded p-3"><div class="text-xs text-slate-400">已收期款</div><div class="text-lg font-semibold text-emerald-700">NT$ 80,000</div></div>
+          <div class="border rounded p-3"><div class="text-xs text-slate-400">未收尾款</div><div class="text-lg font-semibold text-red-700">NT$ 120,000</div></div>
+        </div>
+      </section>
+      <section class="bg-white rounded-lg border border-slate-200 p-5">
+        <h3 class="font-semibold text-slate-800 mb-3">代墊款明細清單（結案時可列印給客戶）</h3>
+        <table class="w-full text-sm">
+          <thead><tr class="text-xs text-slate-400 border-b"><th class="text-left py-1.5 font-normal">日期</th><th class="text-left py-1.5 font-normal">項目</th><th class="text-right py-1.5 font-normal">金額</th></tr></thead>
+          <tbody>
+            <tr class="border-b"><td class="py-1.5">2026-06-20</td><td class="py-1.5">裁判費</td><td class="py-1.5 text-right">NT$ 15,000</td></tr>
+            <tr class="border-b"><td class="py-1.5">2026-06-25</td><td class="py-1.5">存證信函郵資</td><td class="py-1.5 text-right">NT$ 3,500</td></tr>
+            <tr><td colspan="2" class="py-2 font-semibold text-right pr-4">合計</td><td class="py-2 text-right font-semibold">NT$ 18,500</td></tr>
+          </tbody>
+        </table>
+      </section>
+    </section>
+
+    <!-- AI 閱卷與策略分析（滿版） -->
+    <section id="page-ai-review" class="page flex-1 h-full">
+      <div class="flex h-full">
+        <div id="pane-left" class="flex flex-col bg-white overflow-hidden" style="width:50%;">
+          <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 flex-shrink-0">
+            <div>
+              <h2 class="text-base font-bold text-slate-900">卷宗預覽</h2>
+              <p class="text-xs text-slate-500 mt-0.5">114訴字1024｜損害賠償事件</p>
+            </div>
+          </div>
+          <div class="flex-1 bg-slate-100 p-4 overflow-hidden flex flex-col min-h-0">
+            <div id="pdf-frame" class="h-full bg-white rounded-lg border border-slate-300 shadow-sm flex flex-col overflow-hidden transition-shadow">
+              <div class="flex items-center justify-between px-4 py-2 bg-slate-700 text-slate-200 text-xs flex-shrink-0">
+                <span>民事起訴狀_原告王大明.pdf</span>
+                <span id="pdf-page-indicator">第 1 / 3 頁</span>
+              </div>
+              <div id="pdf-viewer" class="flex-1 overflow-y-auto p-8 text-sm leading-7 text-slate-700">
+                <p class="text-center font-bold text-lg mb-6 text-slate-900" data-page="1">民事起訴狀（第 1 頁）</p>
+                <p class="mb-3" data-page="1">原告：王大明　被告：李小華</p>
+                <p class="mb-3" data-page="1">一、緣被告於113年8月15日駕駛自用小客車，超速行駛撞擊原告所騎乘之機車，致原告受傷……</p>
+                <p class="text-slate-400 text-xs mt-6">（真實 App 中此處是 react-pdf 直接讀取 Storage 內的真實 PDF；這裡用純文字模擬示意。）</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="pane-resizer" class="resizer" role="separator" aria-orientation="vertical"></div>
+        <div id="pane-right" class="flex flex-col bg-slate-50 overflow-hidden" style="width:50%;">
+          <div class="px-6 py-4 border-b border-slate-200 flex-shrink-0 bg-white">
+            <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+              <svg class="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+              AI 策略分析
+            </h2>
+            <p class="text-xs text-slate-500 mt-0.5">分析基準：民事起訴狀_原告王大明.pdf</p>
+            <div class="mt-3 flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+              <svg class="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M5.07 19H19a2 2 0 001.75-2.96L13.75 4a2 2 0 00-3.5 0L3.25 16A2 2 0 005 19z" /></svg>
+              <span>下方三個分析面板為<b>靜態示範內容</b>，尚未串接真實 AI 模型讀取你上傳的卷宗。</span>
+            </div>
+            <div class="mt-2 flex flex-wrap items-center gap-2 bg-slate-50 border border-slate-200 rounded-md px-3 py-2">
+              <span class="text-xs text-slate-500 font-medium">來源分級：</span>
+              <span class="src-tag src-verified">原文</span>
+              <span class="src-tag src-inferred">AI 推論</span>
+              <span class="src-tag src-generated" data-law="示範用生成內容">待核</span>
+            </div>
+          </div>
+          <div class="flex-1 overflow-y-auto p-4 space-y-3">
+            <div class="accordion bg-white rounded-lg border border-slate-200 overflow-hidden">
+              <button class="accordion-toggle w-full flex items-center justify-between px-5 py-4 text-left hover:bg-slate-50">
+                <span class="font-semibold text-sm text-slate-900">【案件現況與爭點摘要】</span>
+                <svg class="accordion-arrow w-4 h-4 text-slate-400 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+              </button>
+              <div class="accordion-body px-5 pb-5 text-sm leading-6 text-slate-600 border-t border-slate-100 pt-4">
+                <p class="mb-2">案件性質：侵權行為損害賠償。 <span class="src-tag src-generated" data-law="民法第184、191-2、193、195條">待核·法條</span></p>
+                <p class="mb-2">請求金額：合計新臺幣120萬元。 <span class="src-tag src-verified">原文</span> <span class="cite-tag" data-page="2">卷宗 p.2</span></p>
+                <p class="font-medium text-slate-800 mb-1">主要爭點：</p>
+                <ul class="list-disc pl-5 space-y-1.5">
+                  <li>肇事責任比例之認定 <span class="src-tag src-inferred">AI 推論</span> <span class="cite-tag" data-page="3">卷宗 p.3</span></li>
+                  <li>薪資損失是否有相當證明 <span class="src-tag src-verified">原文</span> <span class="cite-tag" data-page="2">卷宗 p.2</span></li>
+                  <li>與有過失、過失相抵之適用 <span class="src-tag src-generated" data-law="民法第217條">待核·法條</span></li>
+                </ul>
+              </div>
+            </div>
+            <div class="accordion bg-white rounded-lg border border-slate-200 overflow-hidden">
+              <button class="accordion-toggle w-full flex items-center justify-between px-5 py-4 text-left hover:bg-slate-50">
+                <span class="font-semibold text-sm text-slate-900">【我方優劣勢評估】</span>
+                <svg class="accordion-arrow w-4 h-4 text-slate-400 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+              </button>
+              <div class="accordion-body hidden px-5 pb-5 text-sm leading-6 text-slate-600 border-t border-slate-100 pt-4">
+                <p class="font-medium text-emerald-700 mb-1">我方有利之點：</p>
+                <ul class="list-disc pl-5 space-y-1.5 mb-3">
+                  <li>初步分析研判表載有對造未依規定讓車情事 <span class="src-tag src-verified">原文</span> <span class="cite-tag" data-page="3">卷宗 p.3</span></li>
+                  <li>薪資損失舉證顯有不足 <span class="src-tag src-verified">原文</span> <span class="cite-tag" data-page="2">卷宗 p.2</span></li>
+                </ul>
+                <p class="font-medium text-rose-700 mb-1">我方不利之點：</p>
+                <ul class="list-disc pl-5 space-y-1.5">
+                  <li>對造有超速紀錄 <span class="src-tag src-inferred">AI 推論</span> <span class="cite-tag" data-page="1">卷宗 p.1</span></li>
+                </ul>
+              </div>
+            </div>
+            <div class="accordion bg-white rounded-lg border border-slate-200 overflow-hidden">
+              <button class="accordion-toggle w-full flex items-center justify-between px-5 py-4 text-left hover:bg-slate-50">
+                <span class="font-semibold text-sm text-slate-900">【後續開庭建議說法】</span>
+                <svg class="accordion-arrow w-4 h-4 text-slate-400 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+              </button>
+              <div class="accordion-body hidden px-5 pb-5 text-sm leading-6 text-slate-600 border-t border-slate-100 pt-4">
+                <div class="mb-3 flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                  本面板整體屬「推論／生成」性質，不可直接引用，須律師本人查證。
+                </div>
+                <ol class="list-decimal pl-5 space-y-2">
+                  <li>程序上：聲請調閱事故現場資料及送鑑定委員會鑑定肇責比例。 <span class="src-tag src-inferred">AI 推論</span></li>
+                  <li>實體抗辯：主張與有過失，請求減輕賠償金額。 <span class="src-tag src-generated" data-law="民法第217條、民事訴訟法第277條">待核·法條</span></li>
+                </ol>
+              </div>
+            </div>
+          </div>
+          <div class="border-t border-slate-200 bg-white p-4 flex-shrink-0">
+            <div class="flex items-start gap-2 mb-2.5 text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-md px-3 py-2">
+              AI 可能產生看似合理但錯誤的內容（幻覺），尤其是法條、判例、金額。本工具僅為輔助，不構成法律意見。
+            </div>
+            <div class="flex items-end gap-2">
+              <div class="flex-1 border border-slate-300 rounded-lg">
+                <textarea rows="2" placeholder="針對這份卷宗向 AI 提問……" class="w-full text-sm px-3 py-2.5 resize-none focus:outline-none rounded-lg placeholder:text-slate-400"></textarea>
+              </div>
+              <button onclick="alert('這是靜態預覽，尚未接上真實的 AI 對話後端。')" class="bg-blue-600 hover:bg-blue-700 text-white rounded-lg p-3 flex-shrink-0">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 法條核對攔截 modal -->
+      <div id="verify-modal" class="fixed inset-0 z-50 items-center justify-center bg-black/50 p-4">
+        <div class="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden">
+          <div class="bg-rose-600 px-6 py-4 flex items-center gap-3">
+            <svg class="w-6 h-6 text-white flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <h3 class="text-white font-bold text-base">此內容由 AI 生成，尚未核實</h3>
+          </div>
+          <div class="px-6 py-5">
+            <p class="text-sm text-slate-600 leading-6 mb-3">以下法條／數據為 AI 依語言模型生成，<b class="text-rose-600">並非查詢自官方法規資料庫</b>。</p>
+            <div id="verify-content" class="bg-slate-50 border border-slate-200 rounded-md px-4 py-3 text-sm font-medium text-slate-800 mb-4"></div>
+            <div class="space-y-2">
+              <a href="https://law.moj.gov.tw/" target="_blank" class="flex items-center justify-between px-4 py-2.5 border border-slate-300 rounded-lg hover:bg-slate-50 text-sm">
+                <span class="text-slate-700">全國法規資料庫</span>
+              </a>
+              <a href="https://judgment.judicial.gov.tw/" target="_blank" class="flex items-center justify-between px-4 py-2.5 border border-slate-300 rounded-lg hover:bg-slate-50 text-sm">
+                <span class="text-slate-700">司法院裁判書查詢系統</span>
+              </a>
+            </div>
+          </div>
+          <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end">
+            <button id="verify-close" class="px-4 py-2 bg-navy-900 hover:bg-navy-800 text-white text-sm font-medium rounded-md">我了解，將自行核對</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 首次使用同意 modal -->
+      <div id="consent-modal" class="fixed inset-0 z-50 items-center justify-center bg-navy-950/70 p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full overflow-hidden">
+          <div class="px-6 py-5 border-b border-slate-200">
+            <h3 class="text-lg font-bold text-slate-900">使用前須知｜AI 輔助分析</h3>
+            <p class="text-xs text-slate-500 mt-1">真實 App 會把同意紀錄寫入 Firestore（aiConsent/{uid}），只需確認一次</p>
+          </div>
+          <div class="px-6 py-5 text-sm text-slate-600 leading-6 space-y-3">
+            <label class="flex items-start gap-3 cursor-pointer">
+              <input type="checkbox" class="consent-check mt-1 w-4 h-4 accent-blue-600 flex-shrink-0">
+              <span>AI 輸出可能包含幻覺，包括不存在的法條、錯誤的判例與虛構的數據。</span>
+            </label>
+            <label class="flex items-start gap-3 cursor-pointer">
+              <input type="checkbox" class="consent-check mt-1 w-4 h-4 accent-blue-600 flex-shrink-0">
+              <span>標示「原文」僅代表可溯源至卷宗，不代表 AI 解讀正確；「推論」「待核」更須自行判斷。</span>
+            </label>
+            <label class="flex items-start gap-3 cursor-pointer">
+              <input type="checkbox" class="consent-check mt-1 w-4 h-4 accent-blue-600 flex-shrink-0">
+              <span>本工具不構成法律意見，一切結果須由本人查證後使用，執業責任由本人承擔。</span>
+            </label>
+          </div>
+          <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+            <span class="text-xs text-slate-400">原型展示，非供實際執業使用</span>
+            <button id="consent-confirm" disabled class="px-5 py-2 bg-slate-300 text-white text-sm font-medium rounded-md cursor-not-allowed">請勾選全部項目</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+  document.getElementById('dash-date').textContent = new Date().toLocaleDateString('zh-TW') + ' — 歡迎回來，這是今日的事務所概況（樣本資料）';
+
+  // 導覽切換
+  const navButtons = document.querySelectorAll('.nav-btn');
+  const pages = document.querySelectorAll('.page');
+  function goTo(target) {
+    navButtons.forEach(b => b.classList.remove('active', 'bg-white/8', 'border-blue-400', 'text-white'));
+    const btn = document.querySelector('[data-target="' + target + '"]');
+    if (btn) btn.classList.add('active', 'bg-white/8', 'border-blue-400', 'text-white');
+    pages.forEach(p => p.classList.remove('active'));
+    document.getElementById('page-' + target).classList.add('active');
+    if (target === 'ai-review' && !window.__consented) {
+      document.getElementById('consent-modal').classList.add('show');
+    }
+  }
+  navButtons.forEach(btn => btn.addEventListener('click', () => goTo(btn.getAttribute('data-target'))));
+  goTo('dashboard');
+
+  // 案件與時效：律師資料夾 + 案件表
+  const lawyers = { chen: '陳志明律師', lin: '林淑芬律師', wang: '王大維律師' };
+  const cases = [
+    { no: '114訴字1024', name: '損害賠償（車禍）', client: '王大明', lawyer: 'chen', status: '進行中', deadline: 5 },
+    { no: '114勞訴字88', name: '確認僱傭關係存在', client: '合勝科技', lawyer: 'chen', status: '進行中', deadline: 21 },
+    { no: '113家調字210', name: '離婚及親權酌定', client: '林小姐', lawyer: 'chen', status: '調解中', deadline: 40 },
+    { no: '114金字305', name: '投資詐欺求償', client: '陳先生', lawyer: 'lin', status: '進行中', deadline: 3 },
+    { no: '113智字47', name: '商標權侵害', client: '合勝科技', lawyer: 'lin', status: '上訴中', deadline: 60 },
+    { no: '114重訴字512', name: '工程款給付爭議', client: '大安建設', lawyer: 'wang', status: '進行中', deadline: 14 },
+  ];
+  const statusBadge = { 進行中:'bg-blue-50 text-blue-700', 調解中:'bg-purple-50 text-purple-700', 上訴中:'bg-amber-50 text-amber-700', 待開庭:'bg-slate-100 text-slate-600', 已結案:'bg-emerald-50 text-emerald-700' };
+  const folderWrap = document.getElementById('lawyer-folders');
+  function renderFolders(selected) {
+    const counts = {};
+    cases.forEach(c => counts[c.lawyer] = (counts[c.lawyer]||0)+1);
+    let html = '<button data-l="all" class="lawyer-folder ' + (selected==='all'?'active':'') + ' w-full flex items-center justify-between px-3 py-2.5 rounded-md text-left"><span class="flex items-center gap-2.5"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM9 4v16"/></svg><span class="text-sm font-medium">全部案件</span></span><span class="folder-count text-xs px-1.5 py-0.5 rounded-full bg-slate-200">' + cases.length + '</span></button>';
+    html += '<div class="pt-1 pb-0.5 px-3"><p class="text-xs text-slate-400">個別律師</p></div>';
+    Object.entries(lawyers).forEach(([key, name]) => {
+      html += '<button data-l="'+key+'" class="lawyer-folder '+(selected===key?'active':'')+' w-full flex items-center justify-between px-3 py-2.5 rounded-md text-left"><span class="flex items-center gap-2.5"><span class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-medium flex items-center justify-center">'+name.charAt(0)+'</span><span class="text-sm font-medium">'+name+'</span></span><span class="folder-count text-xs px-1.5 py-0.5 rounded-full bg-slate-200">'+(counts[key]||0)+'</span></button>';
+    });
+    folderWrap.innerHTML = html;
+    folderWrap.querySelectorAll('.lawyer-folder').forEach(f => f.addEventListener('click', () => { renderFolders(f.getAttribute('data-l')); renderCases(f.getAttribute('data-l')); }));
+  }
+  function renderCases(filter) {
+    const rows = filter === 'all' ? cases : cases.filter(c => c.lawyer === filter);
+    document.getElementById('cases-tbody').innerHTML = rows.map(c => {
+      const color = c.deadline <= 7 ? 'text-red-600 font-semibold' : (c.deadline <= 14 ? 'text-amber-600' : 'text-slate-500');
+      return '<tr class="hover:bg-slate-50"><td class="px-5 py-3 text-slate-600 font-mono text-xs">'+c.no+'</td><td class="px-5 py-3 text-slate-800">'+c.name+'</td><td class="px-5 py-3 text-slate-600">'+c.client+'</td><td class="px-5 py-3 text-xs">'+lawyers[c.lawyer]+'</td><td class="px-5 py-3"><span class="text-xs px-2 py-0.5 rounded-full '+(statusBadge[c.status]||'')+'">'+c.status+'</span></td><td class="px-5 py-3 '+color+'">尚餘 '+c.deadline+' 日</td></tr>';
+    }).join('');
+    document.getElementById('cases-title').textContent = filter === 'all' ? '全部案件' : lawyers[filter] + ' 的案件';
+    document.getElementById('cases-subtitle').textContent = '共 ' + rows.length + ' 件';
+  }
+  renderFolders('all'); renderCases('all');
+
+  // CRM 樣本
+  const clients = [
+    { name:'王大明', id:'A123456789', phone:'0912-345-678', email:'wang@example.com', cases:['114訴字1024（進行中）'], closed:[] },
+    { name:'合勝科技股份有限公司', id:'統編 12345678', phone:'02-2700-1234', email:'legal@hoseng.example', cases:['114勞訴字88（進行中）','113智字47（上訴中）'], closed:['112訴字900（已結案）'] },
+    { name:'林小姐', id:'A987654321', phone:'0933-222-111', email:'lin@example.com', cases:['113家調字210（調解中）'], closed:[] },
+    { name:'大安建設股份有限公司', id:'統編 87654321', phone:'02-2711-8888', email:'contact@daan.example', cases:['114重訴字512（進行中）'], closed:[] },
+  ];
+  const crmList = document.getElementById('crm-list');
+  const crmDetail = document.getElementById('crm-detail');
+  function renderCrmList(activeIdx) {
+    crmList.innerHTML = clients.map((c,i) => '<button data-i="'+i+'" class="w-full text-left px-4 py-3 border-b border-slate-100 hover:bg-slate-50 '+(activeIdx===i?'bg-indigo-50 border-l-2 border-l-indigo-500':'')+'"><div class="font-medium text-slate-800 text-sm">'+c.name+'</div><div class="text-xs text-slate-400 mt-0.5">'+c.id+'</div></button>').join('');
+    crmList.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { const i = +b.getAttribute('data-i'); renderCrmList(i); renderCrmDetail(i); }));
+  }
+  function renderCrmDetail(i) {
+    const c = clients[i];
+    crmDetail.innerHTML =
+      '<section class="bg-white rounded-lg border border-slate-200 p-5"><h3 class="font-semibold text-slate-800 mb-3">客戶基本資訊</h3>'
+      + '<dl class="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">'
+      + '<div><dt class="text-slate-400 text-xs">姓名 / 名稱</dt><dd class="text-slate-800">'+c.name+'</dd></div>'
+      + '<div><dt class="text-slate-400 text-xs">身分證字號 / 統編</dt><dd class="text-slate-800">'+c.id+'</dd></div>'
+      + '<div><dt class="text-slate-400 text-xs">聯絡電話</dt><dd class="text-slate-800">'+c.phone+'</dd></div>'
+      + '<div><dt class="text-slate-400 text-xs">Email</dt><dd class="text-slate-800">'+c.email+'</dd></div>'
+      + '</dl></section>'
+      + '<section class="bg-white rounded-lg border border-slate-200 p-5"><h3 class="font-semibold text-slate-800 mb-3">案件列表</h3>'
+      + '<div class="mb-2"><div class="text-xs text-slate-500 mb-1">進行中 ('+c.cases.length+')</div>'+c.cases.map(x=>'<div class="text-sm border rounded px-3 py-2 mb-1">'+x+'</div>').join('')+'</div>'
+      + '<div><div class="text-xs text-slate-500 mb-1">已結案 ('+c.closed.length+')</div>'+(c.closed.length?c.closed.map(x=>'<div class="text-sm border rounded px-3 py-2 mb-1 bg-slate-50 text-slate-500">'+x+'</div>').join(''):'<div class="text-xs text-slate-300">無</div>')+'</div>'
+      + '</section>'
+      + '<section class="bg-white rounded-lg border border-slate-200 p-5"><h3 class="font-semibold text-slate-800 mb-3">諮詢紀錄 / 往來備忘錄</h3><div class="text-sm text-slate-300">（樣本資料，尚無紀錄）</div></section>';
+  }
+  renderCrmList(0); renderCrmDetail(0);
+
+  // 手風琴
+  document.querySelectorAll('.accordion-toggle').forEach(t => t.addEventListener('click', () => {
+    t.nextElementSibling.classList.toggle('hidden');
+    t.querySelector('.accordion-arrow').classList.toggle('rotate-180');
+  }));
+
+  // 可拖曳分隔線
+  (function() {
+    const resizer = document.getElementById('pane-resizer');
+    const left = document.getElementById('pane-left');
+    const right = document.getElementById('pane-right');
+    let dragging = false;
+    resizer.addEventListener('mousedown', () => { dragging = true; resizer.classList.add('dragging'); document.body.classList.add('resizing'); });
+    document.addEventListener('mousemove', e => {
+      if (!dragging) return;
+      const rect = resizer.parentElement.getBoundingClientRect();
+      let pct = ((e.clientX - rect.left) / rect.width) * 100;
+      pct = Math.min(75, Math.max(25, pct));
+      left.style.width = pct + '%'; right.style.width = (100-pct) + '%';
+    });
+    document.addEventListener('mouseup', () => { dragging = false; resizer.classList.remove('dragging'); document.body.classList.remove('resizing'); });
+  })();
+
+  // 引用溯源：跳頁（不精準到行，忠實反映真實 App 用 react-pdf 的限制）
+  document.querySelectorAll('.cite-tag').forEach(tag => tag.addEventListener('click', () => {
+    const page = tag.getAttribute('data-page');
+    document.getElementById('pdf-page-indicator').textContent = '第 ' + page + ' / 3 頁';
+    const frame = document.getElementById('pdf-frame');
+    frame.classList.add('flash-ring');
+    setTimeout(() => frame.classList.remove('flash-ring'), 1200);
+  }));
+
+  // 待核 → 核對攔截
+  (function() {
+    const modal = document.getElementById('verify-modal');
+    const content = document.getElementById('verify-content');
+    document.querySelectorAll('.src-generated').forEach(tag => tag.addEventListener('click', () => {
+      content.textContent = 'AI 引用：' + (tag.getAttribute('data-law') || '此段生成內容');
+      modal.classList.add('show');
+    }));
+    document.getElementById('verify-close').addEventListener('click', () => modal.classList.remove('show'));
+    modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('show'); });
+  })();
+
+  // 首次同意
+  (function() {
+    const modal = document.getElementById('consent-modal');
+    const confirmBtn = document.getElementById('consent-confirm');
+    const checks = document.querySelectorAll('.consent-check');
+    window.__consented = false;
+    function update() {
+      const all = Array.from(checks).every(c => c.checked);
+      confirmBtn.disabled = !all;
+      confirmBtn.textContent = all ? '進入 AI 分析' : '請勾選全部項目';
+      confirmBtn.className = all ? 'px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md cursor-pointer' : 'px-5 py-2 bg-slate-300 text-white text-sm font-medium rounded-md cursor-not-allowed';
+    }
+    checks.forEach(c => c.addEventListener('change', update));
+    confirmBtn.addEventListener('click', () => { if (confirmBtn.disabled) return; window.__consented = true; modal.classList.remove('show'); });
+  })();
+</script>
+</body>
+</html>

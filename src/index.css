@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+@theme {
+  --color-navy-950: #0a1128;
+  --color-navy-900: #0f172a;
+  --color-navy-800: #1e293b;
+  --color-navy-700: #334155;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+  background-color: #f5f6f8;
+}
+
+.placeholder-block {
+  background-image: repeating-linear-gradient(45deg, #f1f5f9, #f1f5f9 10px, #e2e8f0 10px, #e2e8f0 20px);
+}
+
+/* 可拖曳分隔線 */
+.resizer {
+  width: 6px;
+  cursor: col-resize;
+  background-color: #e2e8f0;
+  flex-shrink: 0;
+  transition: background-color 0.15s;
+  position: relative;
+}
+.resizer:hover, .resizer.dragging {
+  background-color: #3b82f6;
+}
+.resizer::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 32px;
+  background-color: #94a3b8;
+  border-radius: 2px;
+}
+.resizer:hover::after, .resizer.dragging::after {
+  background-color: #ffffff;
+}
+body.resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+/* 引用溯源：被跳轉高亮的段落 */
+.cited-highlight {
+  background-color: #fef08a;
+  box-shadow: 0 0 0 3px #fef08a;
+  border-radius: 2px;
+  transition: background-color 0.4s, box-shadow 0.4s;
+}
+.cited-highlight.fade {
+  background-color: transparent;
+  box-shadow: 0 0 0 3px transparent;
+}
