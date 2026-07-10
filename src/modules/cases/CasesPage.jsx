@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { addDoc, collection, doc, orderBy, serverTimestamp, updateDoc } from 'firebase/firestore'
 import { db } from '../../firebase.js'
 import { useCollection } from '../../hooks/useCollection.js'
-import { CASE_STATUSES, CASE_STATUS_BADGE } from '../../data/caseStatus.js'
+import { CASE_STATUSES, CASE_STATUS_BADGE, isClosed } from '../../data/caseStatus.js'
 import DeadlineForm from '../deadlines/DeadlineForm.jsx'
 import CalendarView from '../deadlines/CalendarView.jsx'
 import ActionDeadlineForm from '../deadlines/ActionDeadlineForm.jsx'
@@ -25,6 +26,7 @@ export default function CasesPage() {
   const { docs: hearings } = useCollection('hearings', [orderBy('date', 'asc')])
   const [selectedLawyer, setSelectedLawyer] = useState('all')
   const [showForm, setShowForm] = useState(false)
+  const [showClosed, setShowClosed] = useState(false) // 這頁預設只顯示「現在案件」；已結案案件的完整歷史紀錄請到「結案案件表」查
 
   const clientLookup = Object.fromEntries(clients.map((c) => [c.id, c]))
 
@@ -58,15 +60,23 @@ export default function CasesPage() {
     return map
   }, [deadlines])
 
-  const filteredCases =
+  const byLawyer =
     selectedLawyer === 'all' ? cases : cases.filter((c) => (c.leadAttorney?.trim() || '') === selectedLawyer)
+  const filteredCases = showClosed ? byLawyer : byLawyer.filter((c) => !isClosed(c.status))
+  const closedCountInScope = byLawyer.filter((c) => isClosed(c.status)).length
 
   return (
     <div className="flex-1 overflow-y-auto px-10 py-8">
       <div className="mb-6 flex items-end justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">案件與時效</h1>
-          <p className="text-slate-500 text-sm mt-1">依承辦律師分類管理案件，避免案件混雜</p>
+          <h1 className="text-2xl font-bold text-slate-900">案件與時效（現在案件）</h1>
+          <p className="text-slate-500 text-sm mt-1">
+            依承辦律師分類管理現在進行中的案件；已結案的完整歷史紀錄請到{' '}
+            <Link to="/closed-cases" className="text-indigo-600 hover:underline">
+              結案案件表
+            </Link>{' '}
+            查詢
+          </p>
         </div>
         <button
           onClick={() => setShowForm((v) => !v)}
@@ -118,7 +128,17 @@ export default function CasesPage() {
               <span className="text-sm font-semibold text-slate-700">
                 {selectedLawyer === 'all' ? '全部案件' : `${selectedLawyer} 的案件`}
               </span>
-              <span className="text-xs text-slate-400">共 {filteredCases.length} 件</span>
+              <div className="flex items-center gap-3">
+                {closedCountInScope > 0 && (
+                  <button
+                    onClick={() => setShowClosed((v) => !v)}
+                    className="text-xs px-2 py-1 rounded border border-slate-200 text-slate-500 hover:bg-slate-50"
+                  >
+                    {showClosed ? `隱藏已結案（${closedCountInScope} 件）` : `顯示已結案（${closedCountInScope} 件）`}
+                  </button>
+                )}
+                <span className="text-xs text-slate-400">共 {filteredCases.length} 件</span>
+              </div>
             </div>
             <table className="w-full text-sm">
               <thead>

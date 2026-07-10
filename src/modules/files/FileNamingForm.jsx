@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { doc, updateDoc } from 'firebase/firestore'
 import { db } from '../../firebase.js'
-import { buildFileName, buildHearingNoticeDocType, FILE_NAMING_STATUS } from '../../data/fileNaming.js'
+import { buildFileName, buildHearingNoticeDocType, FILE_NAMING_STATUS, DOC_CATEGORIES } from '../../data/fileNaming.js'
 import { combineCaseNumberDivision } from '../../lib/caseNumber.js'
 import { abbreviateCourtName } from '../../lib/courtAbbrev.js'
 
@@ -27,6 +27,7 @@ export default function FileNamingForm({ file, onClose }) {
   const [docType, setDocType] = useState('')
   const [caseNumberRaw, setCaseNumberRaw] = useState('')
   const [divisionRaw, setDivisionRaw] = useState('')
+  const [category, setCategory] = useState('')
   const [saving, setSaving] = useState(false)
   const [copied, setCopied] = useState(false)
 
@@ -70,6 +71,7 @@ export default function FileNamingForm({ file, onClose }) {
       await updateDoc(doc(db, 'files', file.id), {
         suggestedFileName: fileName,
         suggestedFileNameStatus: FILE_NAMING_STATUS,
+        category: category || null,
       })
       onClose?.()
     } finally {
@@ -142,8 +144,27 @@ export default function FileNamingForm({ file, onClose }) {
         </label>
 
         <label className="text-xs text-slate-500 flex items-center gap-2 col-span-2">
-          <input type="checkbox" checked={isHearingNotice} onChange={(e) => setIsHearingNotice(e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={isHearingNotice}
+            onChange={(e) => {
+              setIsHearingNotice(e.target.checked)
+              if (e.target.checked && !category) setCategory('開庭')
+            }}
+          />
           <span>此文件為開庭通知</span>
+        </label>
+
+        <label className="text-xs text-slate-500 space-y-1 col-span-2">
+          <span>文件分類</span>
+          <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full text-sm border rounded px-2 py-1.5">
+            <option value="">請選擇分類…</option>
+            {DOC_CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
         </label>
 
         {isHearingNotice ? (

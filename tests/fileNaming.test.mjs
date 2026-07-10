@@ -1,7 +1,11 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { buildFileName, buildHearingNoticeDocType } from '../src/data/fileNaming.js'
+import { buildFileName, buildHearingNoticeDocType, DOC_CATEGORIES } from '../src/data/fileNaming.js'
 import { combineCaseNumberDivision } from '../src/lib/caseNumber.js'
+
+test('DOC_CATEGORIES matches the 2026-07-09 agreed taxonomy', () => {
+  assert.deepEqual(DOC_CATEGORIES, ['委任狀', '公文', '書狀', '開庭', '進度管理'])
+})
 
 test('buildFileName matches the spec worked example: 出狀 + 親遞', () => {
   const name = buildFileName({

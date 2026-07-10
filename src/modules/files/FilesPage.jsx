@@ -1,21 +1,36 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { orderBy, where } from 'firebase/firestore'
 import { useNavigate } from 'react-router-dom'
 import { useCollection } from '../../hooks/useCollection.js'
+import { DOC_CATEGORIES } from '../../data/fileNaming.js'
 import UploadDropzone from './UploadDropzone.jsx'
 import PdfViewer from './PdfViewer.jsx'
 import FileNamingForm from './FileNamingForm.jsx'
+
+const CATEGORY_BADGE = {
+  委任狀: 'bg-violet-50 text-violet-700',
+  公文: 'bg-amber-50 text-amber-700',
+  書狀: 'bg-blue-50 text-blue-700',
+  開庭: 'bg-rose-50 text-rose-700',
+  進度管理: 'bg-emerald-50 text-emerald-700',
+}
 
 export default function FilesPage() {
   const navigate = useNavigate()
   const { docs: cases } = useCollection('cases')
   const [caseId, setCaseId] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('全部')
   const [viewing, setViewing] = useState(null)
   const [namingFile, setNamingFile] = useState(null)
 
-  const { docs: files } = useCollection(
+  const { docs: allFiles } = useCollection(
     'files',
     caseId ? [where('caseId', '==', caseId), orderBy('uploadedAt', 'desc')] : [],
+  )
+
+  const files = useMemo(
+    () => (categoryFilter === '全部' ? allFiles : allFiles.filter((f) => f.category === categoryFilter)),
+    [allFiles, categoryFilter],
   )
 
   return (
@@ -50,9 +65,28 @@ export default function FilesPage() {
           <UploadDropzone caseId={caseId} />
 
           <section className="bg-white rounded-lg border border-slate-200 p-5">
-            <h3 className="font-semibold text-slate-800 mb-3">卷宗檔案（{files.length}）</h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-slate-800">卷宗檔案（{files.length}）</h3>
+              <div className="flex items-center gap-1.5">
+                {['全部', ...DOC_CATEGORIES].map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setCategoryFilter(c)}
+                    className={`text-xs px-2.5 py-1 rounded-full border ${
+                      categoryFilter === c
+                        ? 'bg-navy-900 text-white border-navy-900'
+                        : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
             {files.length === 0 ? (
-              <div className="text-sm text-slate-300">此案件尚無上傳檔案</div>
+              <div className="text-sm text-slate-300">
+                {categoryFilter === '全部' ? '此案件尚無上傳檔案' : `此案件尚無「${categoryFilter}」分類的檔案`}
+              </div>
             ) : (
               <ul className="divide-y">
                 {files.map((f) => (
@@ -63,6 +97,11 @@ export default function FilesPage() {
                         className="text-sm text-indigo-700 hover:underline flex items-center gap-2 min-w-0 truncate"
                       >
                         📄 {f.fileName}
+                        {f.category && (
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0 ${CATEGORY_BADGE[f.category] ?? 'bg-slate-100 text-slate-500'}`}>
+                            {f.category}
+                          </span>
+                        )}
                       </button>
                       <div className="flex items-center gap-3 flex-shrink-0">
                         <span className="text-xs text-slate-400">

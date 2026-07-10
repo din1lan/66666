@@ -11,6 +11,11 @@
 //   結尾規範：狀別後若已無案號等後續資訊，狀別後方不加「-」
 export const FILE_NAMING_STATUS = 'DRAFT_DETERMINISTIC_NO_AI'
 
+// 文件分類（2026-07-09 兩位行政人員與丁一朗盤點需求後決定的架構）——
+// 先在檔名產生器這裡把每份文件標上分類，即使現在資料庫仍是模擬版本，
+// 之後真的要接正式線上資料庫時，資料格式已經對齊，不用重新分類一次。
+export const DOC_CATEGORIES = ['委任狀', '公文', '書狀', '開庭', '進度管理']
+
 function shortMDTime(dateISO, timeHHMM) {
   if (!dateISO) return ''
   const [, m, d] = dateISO.split('-')

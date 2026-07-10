@@ -16,8 +16,20 @@ export default function ClosedCasesPage() {
   const [tab, setTab] = useState('全部')
   const [showForm, setShowForm] = useState(false)
   const [importState, setImportState] = useState('unknown') // 'unknown' | 'checking' | 'not-imported' | 'imported' | 'importing'
+  const [search, setSearch] = useState('')
 
-  const filtered = tab === '全部' ? closedCases : closedCases.filter((c) => c.attorney === tab)
+  const byAttorney = tab === '全部' ? closedCases : closedCases.filter((c) => c.attorney === tab)
+
+  const filtered = useMemo(() => {
+    const q = search.trim()
+    if (!q) return byAttorney
+    return byAttorney.filter((c) => {
+      const gregorianYear = c.closedDateISO ? c.closedDateISO.slice(0, 4) : ''
+      const rocYear = gregorianYear ? String(Number(gregorianYear) - 1911) : ''
+      const haystack = [c.person, ...(c.caseNumbers ?? []), gregorianYear, rocYear, c.cause].filter(Boolean).join(' ')
+      return haystack.toLowerCase().includes(q.toLowerCase())
+    })
+  }, [byAttorney, search])
 
   const countsByAttorney = useMemo(() => {
     const map = {}
@@ -96,6 +108,18 @@ export default function ClosedCasesPage() {
       </div>
 
       {showForm && <NewClosedCaseForm onDone={() => setShowForm(false)} />}
+
+      <div className="mb-4">
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="搜尋人名、案號或年份（民國年或西元年皆可，如「115」或「2026」）"
+          className="w-full max-w-lg text-sm border border-slate-200 rounded-md px-3 py-2 placeholder:text-slate-400"
+        />
+        {search.trim() && (
+          <p className="text-xs text-slate-400 mt-1">符合「{search.trim()}」的結果：{filtered.length} 筆</p>
+        )}
+      </div>
 
       <div className="flex gap-2 mb-4">
         {ATTORNEY_TABS.map((t) => (
