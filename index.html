@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>法律事務所案件管理系統（整站可操作預覽）</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
   tailwind.config = {
     theme: {
@@ -50,6 +51,10 @@
         <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
         <span class="text-sm font-medium">案件與時效</span>
       </button>
+      <button data-page="page-new-intake" class="navitem w-full flex items-center gap-3 px-6 py-3 text-left text-slate-300 border-l-2 border-transparent hover:bg-white/5">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+        <span class="text-sm font-medium">新增接案</span>
+      </button>
       <button data-page="page-closed-cases" class="navitem w-full flex items-center gap-3 px-6 py-3 text-left text-slate-300 border-l-2 border-transparent hover:bg-white/5">
         <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
         <span class="text-sm font-medium">結案案件表</span>
@@ -60,7 +65,7 @@
       </button>
       <button data-page="page-files" class="navitem w-full flex items-center gap-3 px-6 py-3 text-left text-slate-300 border-l-2 border-transparent hover:bg-white/5">
         <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-        <span class="text-sm font-medium">線上卷宗與 AI 分析</span>
+        <span class="text-sm font-medium">文件與檔名產生器</span>
       </button>
       <button data-page="page-billing" class="navitem w-full flex items-center gap-3 px-6 py-3 text-left text-slate-300 border-l-2 border-transparent hover:bg-white/5">
         <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.66 0-3 .9-3 2s1.34 2 3 2 3 .9 3 2-1.34 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V6m0 2v8m0 0v2m0-2c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -166,7 +171,7 @@
         <div class="bg-white rounded-lg border border-slate-200 p-5">
           <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
             <h3 class="font-semibold text-slate-800">代辦與進度總表</h3>
-            <button id="btn-sync-gcal" class="text-xs px-3 py-1.5 rounded border border-slate-200 text-slate-600 hover:bg-slate-50">🔄 同步至 Google Calendar</button>
+            <span class="text-xs text-slate-400" title="因為是靜態網站沒有後端，無法整份行事曆自動雙向同步；請用下方「開庭通知列表」或本表每一列的「+ 加入 Google 日曆」連結，逐筆一鍵加入您自己的 Google 日曆">📅 各筆開庭旁可點「+ 加入 Google 日曆」逐筆加入</span>
           </div>
           <div class="overflow-x-auto">
             <table class="w-full text-sm">
@@ -176,6 +181,7 @@
                 <th class="px-3 py-2 font-medium">股別</th>
                 <th class="px-3 py-2 font-medium">當事人/對造</th>
                 <th class="px-3 py-2 font-medium">負責律師</th>
+                <th class="px-3 py-2 font-medium" title="以案件為單位記錄，同案件的所有列都會同步顯示最新收文">最近收文</th>
                 <th class="px-3 py-2 font-medium">代辦/開庭項目</th>
                 <th class="px-3 py-2 font-medium w-36">行政工作進度條</th>
                 <th class="px-3 py-2 font-medium">進度狀態</th>
@@ -190,23 +196,43 @@
             <h3 class="font-semibold text-slate-800">案件列表</h3>
             <button id="btn-toggle-closed-cases" class="text-xs px-2 py-1 rounded border border-slate-200 text-slate-500 hover:bg-slate-50 hidden"></button>
           </div>
-          <table class="w-full text-sm">
-            <thead><tr class="text-left text-xs text-slate-500 border-b border-slate-100 bg-slate-50">
-              <th class="px-3 py-2 font-medium">案號</th><th class="px-3 py-2 font-medium">當事人 / 案由</th><th class="px-3 py-2 font-medium">承辦律師</th><th class="px-3 py-2 font-medium">狀態</th>
-            </tr></thead>
-            <tbody id="cases-table-body" class="divide-y divide-slate-100"></tbody>
-          </table>
-          <form id="form-case" class="grid grid-cols-4 gap-2 mt-3 pt-3 border-t border-slate-100">
-            <input required name="caseNumber" placeholder="案號，例：115訴1" class="text-sm border rounded px-2 py-1.5 col-span-1" />
-            <input required name="title" placeholder="當事人 / 案由" class="text-sm border rounded px-2 py-1.5 col-span-2" />
-            <select name="attorney" class="text-sm border rounded px-2 py-1.5 col-span-1"></select>
-            <button class="text-xs px-3 py-1.5 rounded bg-navy-900 text-white col-span-4 w-fit">+ 新增案件</button>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead><tr class="text-left text-xs text-slate-500 border-b border-slate-100 bg-slate-50">
+                <th class="px-3 py-2 font-medium">案號</th>
+                <th class="px-3 py-2 font-medium">當事人 / 案由</th>
+                <th class="px-3 py-2 font-medium">承辦律師</th>
+                <th class="px-3 py-2 font-medium">對造</th>
+                <th class="px-3 py-2 font-medium">委任狀態</th>
+                <th class="px-3 py-2 font-medium">費用收付</th>
+                <th class="px-3 py-2 font-medium">應收款項</th>
+                <th class="px-3 py-2 font-medium">訴訟階段</th>
+              </tr></thead>
+              <tbody id="cases-table-body" class="divide-y divide-slate-100"></tbody>
+            </table>
+          </div>
+          <form id="form-case" class="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-slate-100">
+            <label class="text-xs text-slate-500 space-y-1"><span>案號</span><input required name="caseNumber" placeholder="115訴1" class="w-full text-sm border rounded px-2 py-1.5" /></label>
+            <label class="text-xs text-slate-500 space-y-1 col-span-2"><span>當事人 / 案由</span><input required name="title" class="w-full text-sm border rounded px-2 py-1.5" /></label>
+            <label class="text-xs text-slate-500 space-y-1"><span>承辦律師</span><select name="attorney" class="w-full text-sm border rounded px-2 py-1.5"></select></label>
+            <label class="text-xs text-slate-500 space-y-1"><span>對造姓名</span><input name="opponentName" class="w-full text-sm border rounded px-2 py-1.5" /></label>
+            <label class="text-xs text-slate-500 space-y-1"><span>對造律師</span><input name="opponentAttorney" class="w-full text-sm border rounded px-2 py-1.5" /></label>
+            <label class="text-xs text-slate-500 space-y-1"><span>對造聯絡方式</span><input name="opponentContact" class="w-full text-sm border rounded px-2 py-1.5" /></label>
+            <label class="text-xs text-slate-500 space-y-1"><span>委任狀態</span>
+              <select name="contractStatus" class="w-full text-sm border rounded px-2 py-1.5"></select>
+            </label>
+            <label class="text-xs text-slate-500 space-y-1"><span>費用收付狀態</span>
+              <select name="feeStatus" class="w-full text-sm border rounded px-2 py-1.5"></select>
+            </label>
+            <label class="text-xs text-slate-500 space-y-1"><span>應收款項（選填）</span><input type="number" min="0" name="receivable" placeholder="0" class="w-full text-sm border rounded px-2 py-1.5" /></label>
+            <label class="text-xs text-slate-500 flex items-center gap-2 self-end"><input type="checkbox" name="mediationOngoing" /><span>目前調解中</span></label>
+            <div class="col-span-3"><button class="text-xs px-3 py-1.5 rounded bg-navy-900 text-white w-fit">+ 新增案件</button></div>
           </form>
         </div>
 
         <div class="grid grid-cols-2 gap-6">
           <div id="form-hearing-wrap"></div>
-          <div id="form-action-deadline-wrap"></div>
+          <div id="form-deadline-wrap"></div>
         </div>
 
         <div class="bg-white rounded-lg border border-slate-200 p-5">
@@ -233,7 +259,49 @@
           </div>
         </div>
 
-        <div id="form-general-deadline-wrap"></div>
+      </section>
+
+      <!-- ============ 新增接案（一站式表單） ============ -->
+      <section id="page-new-intake" class="page space-y-4">
+        <div>
+          <h1 class="text-2xl font-bold text-slate-900">新增接案</h1>
+          <p class="text-slate-500 text-sm mt-1">接到新案時填一次，同時建立案件、客戶（若尚未有此客戶）、以及委任狀的建議檔名</p>
+        </div>
+
+        <form id="form-new-intake" class="bg-white rounded-lg border border-slate-200 p-5 space-y-4">
+          <div class="grid grid-cols-2 gap-3">
+            <label class="text-xs text-slate-500 space-y-1"><span>當事人姓名</span><input required name="person" class="w-full text-sm border rounded px-2 py-1.5" /></label>
+            <div class="text-xs text-slate-500 space-y-1">
+              <span>承辦律師（可複選）</span>
+              <div id="intake-attorney" class="flex flex-wrap gap-x-3 gap-y-1 border rounded px-2 py-1.5"></div>
+            </div>
+            <label class="text-xs text-slate-500 space-y-1"><span>客戶聯絡電話（選填，用來建立/比對客戶資料）</span><input name="phone" class="w-full text-sm border rounded px-2 py-1.5" /></label>
+            <label class="text-xs text-slate-500 space-y-1"><span>客戶 Email（選填）</span><input name="email" type="email" class="w-full text-sm border rounded px-2 py-1.5" /></label>
+            <label class="text-xs text-slate-500 space-y-1 col-span-2"><span>案由</span><input required name="cause" class="w-full text-sm border rounded px-2 py-1.5" /></label>
+            <label class="text-xs text-slate-500 space-y-1"><span>案號（若尚未分案可留空，之後在案件列表補上）</span><input name="caseNumberRaw" placeholder="115訴1" class="w-full text-sm border rounded px-2 py-1.5" /></label>
+            <label class="text-xs text-slate-500 space-y-1"><span>股別（選填）</span><input name="divisionRaw" placeholder="玄股" class="w-full text-sm border rounded px-2 py-1.5" /></label>
+          </div>
+
+          <div class="border-t border-slate-100 pt-3 grid grid-cols-2 gap-3">
+            <label class="text-xs text-slate-500 space-y-1"><span>委任日期（民國年 YYY.MM.DD，用於委任狀檔名）</span><input name="contractDateRoc" placeholder="115.07.10" class="w-full text-sm border rounded px-2 py-1.5" /></label>
+            <label class="text-xs text-slate-500 space-y-1"><span>委任狀態</span><select name="contractStatus" id="intake-contract-status" class="w-full text-sm border rounded px-2 py-1.5"></select></label>
+            <label class="text-xs text-slate-500 space-y-1"><span>是否已收款</span><select name="feeStatus" id="intake-fee-status" class="w-full text-sm border rounded px-2 py-1.5"></select></label>
+          </div>
+
+          <div class="border-t border-slate-100 pt-3 grid grid-cols-3 gap-3">
+            <label class="text-xs text-slate-500 space-y-1"><span>對造姓名（選填）</span><input name="opponentName" class="w-full text-sm border rounded px-2 py-1.5" /></label>
+            <label class="text-xs text-slate-500 space-y-1"><span>對造律師（選填）</span><input name="opponentAttorney" class="w-full text-sm border rounded px-2 py-1.5" /></label>
+            <label class="text-xs text-slate-500 space-y-1"><span>對造聯絡方式（選填）</span><input name="opponentContact" class="w-full text-sm border rounded px-2 py-1.5" /></label>
+          </div>
+
+          <label class="text-xs text-slate-500 space-y-1 block"><span>客戶備註（選填，若客戶已存在會附加在原備註後面）</span><input name="note" class="w-full text-sm border rounded px-2 py-1.5" /></label>
+
+          <div id="intake-preview" class="text-sm bg-slate-50 border border-slate-200 rounded p-3 space-y-1"></div>
+
+          <button class="text-sm px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700">建立案件 + 客戶 + 檔名</button>
+        </form>
+
+        <div id="intake-result" class="hidden bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-lg p-4 text-sm space-y-1"></div>
       </section>
 
       <!-- ============ 結案案件表 ============ -->
@@ -244,29 +312,6 @@
             <p class="text-slate-500 text-sm mt-1">取代原本的 Google Sheet「結案簡表」，往後新結案請直接在這裡登記</p>
           </div>
           <div id="closed-import-area" class="flex items-center gap-2"></div>
-        </div>
-
-        <div>
-          <input id="closed-search" placeholder="搜尋人名、案號或年份（民國年或西元年皆可，如「115」或「2026」）" class="w-full max-w-lg text-sm border border-slate-200 rounded-md px-3 py-2 placeholder:text-slate-400" />
-          <p id="closed-search-hint" class="text-xs text-slate-400 mt-1 hidden"></p>
-        </div>
-
-        <div class="flex gap-2 flex-wrap" id="closed-tabs"></div>
-
-        <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
-          <div class="px-5 py-3 border-b border-slate-200 flex items-center justify-between gap-3">
-            <div class="flex items-center gap-3 min-w-0">
-              <span class="text-sm font-semibold text-slate-700" id="closed-table-title">全部結案紀錄</span>
-              <span class="text-xs text-slate-400" id="closed-table-sub"></span>
-            </div>
-            <button id="btn-export-closed-csv" type="button" class="text-xs px-3 py-1.5 rounded border border-slate-300 text-slate-600 hover:bg-slate-50 whitespace-nowrap">匯出開放式格式 (Google Sheets/CSV)</button>
-          </div>
-          <table class="w-full text-sm">
-            <thead><tr class="text-left text-xs text-slate-500 border-b border-slate-100 bg-slate-50">
-              <th class="px-5 py-2.5 font-medium">結案日期</th><th class="px-5 py-2.5 font-medium">當事人</th><th class="px-5 py-2.5 font-medium">案由</th><th class="px-5 py-2.5 font-medium">案號</th><th class="px-5 py-2.5 font-medium">結案文件</th><th class="px-5 py-2.5 font-medium">備註</th>
-            </tr></thead>
-            <tbody id="closed-table-body" class="divide-y divide-slate-100"></tbody>
-          </table>
         </div>
 
         <div class="bg-white rounded-lg border border-slate-200 p-5">
@@ -302,33 +347,68 @@
             <button class="col-span-3 w-fit text-sm px-4 py-2 rounded bg-indigo-600 text-white">儲存結案登記</button>
           </form>
         </div>
+
+        <div>
+          <input id="closed-search" placeholder="搜尋人名、案號或年份（民國年或西元年皆可，如「115」或「2026」）" class="w-full max-w-lg text-sm border border-slate-200 rounded-md px-3 py-2 placeholder:text-slate-400" />
+          <p id="closed-search-hint" class="text-xs text-slate-400 mt-1 hidden"></p>
+        </div>
+
+        <div class="flex gap-2 flex-wrap" id="closed-tabs"></div>
+
+        <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+          <div class="px-5 py-3 border-b border-slate-200 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+              <span class="text-sm font-semibold text-slate-700" id="closed-table-title">全部結案紀錄</span>
+              <span class="text-xs text-slate-400" id="closed-table-sub"></span>
+            </div>
+            <button id="btn-export-closed-csv" type="button" class="text-xs px-3 py-1.5 rounded border border-slate-300 text-slate-600 hover:bg-slate-50 whitespace-nowrap">匯出開放式格式 (Google Sheets/CSV)</button>
+          </div>
+          <table class="w-full text-sm">
+            <thead><tr class="text-left text-xs text-slate-500 border-b border-slate-100 bg-slate-50">
+              <th class="px-5 py-2.5 font-medium">結案日期</th><th class="px-5 py-2.5 font-medium">當事人</th><th class="px-5 py-2.5 font-medium">案由</th><th class="px-5 py-2.5 font-medium">案號</th><th class="px-5 py-2.5 font-medium">結案文件</th><th class="px-5 py-2.5 font-medium">備註</th>
+            </tr></thead>
+            <tbody id="closed-table-body" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
       </section>
 
       <!-- ============ CRM ============ -->
       <section id="page-crm" class="page space-y-4">
         <h1 class="text-2xl font-bold text-slate-900">客戶資料 (CRM)</h1>
         <p class="text-slate-500 text-sm -mt-2">簡易客戶清單示範，正式版可再串接案件、對話紀錄等關聯資料</p>
+
+        <div>
+          <input id="crm-search" placeholder="🔍 客戶搜尋引擎：輸入姓名，同時查客戶資料、現有案件、已結案紀錄" class="w-full max-w-xl text-sm border border-slate-200 rounded-md px-3 py-2 placeholder:text-slate-400" />
+        </div>
+        <div id="crm-search-results" class="hidden bg-white rounded-lg border border-slate-200 p-5 space-y-4"></div>
+
         <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+          <div class="px-5 py-3 border-b border-slate-200 flex items-center justify-between gap-3">
+            <span class="text-sm font-semibold text-slate-700">客戶清單</span>
+            <button id="btn-export-clients-csv" type="button" class="text-xs px-3 py-1.5 rounded border border-slate-300 text-slate-600 hover:bg-slate-50 whitespace-nowrap">匯出開放式格式 (Google Sheets/CSV)</button>
+          </div>
           <table class="w-full text-sm">
             <thead><tr class="text-left text-xs text-slate-500 border-b border-slate-100 bg-slate-50">
-              <th class="px-5 py-2.5 font-medium">姓名</th><th class="px-5 py-2.5 font-medium">聯絡電話</th><th class="px-5 py-2.5 font-medium">Email</th><th class="px-5 py-2.5 font-medium">備註</th>
+              <th class="px-5 py-2.5 font-medium">姓名</th><th class="px-5 py-2.5 font-medium">聯絡電話</th><th class="px-5 py-2.5 font-medium">Email</th><th class="px-5 py-2.5 font-medium">身分證號</th><th class="px-5 py-2.5 font-medium">地址</th><th class="px-5 py-2.5 font-medium">備註</th>
             </tr></thead>
             <tbody id="clients-table-body" class="divide-y divide-slate-100"></tbody>
           </table>
         </div>
-        <form id="form-client" class="bg-white rounded-lg border border-slate-200 p-5 grid grid-cols-4 gap-3">
+        <form id="form-client" class="bg-white rounded-lg border border-slate-200 p-5 grid grid-cols-3 gap-3">
           <input required name="name" placeholder="姓名" class="text-sm border rounded px-2 py-1.5" />
           <input name="phone" placeholder="聯絡電話" class="text-sm border rounded px-2 py-1.5" />
           <input name="email" placeholder="Email" class="text-sm border rounded px-2 py-1.5" />
+          <input name="idNumber" placeholder="身分證號" class="text-sm border rounded px-2 py-1.5" />
+          <input name="address" placeholder="地址" class="text-sm border rounded px-2 py-1.5" />
           <input name="note" placeholder="備註" class="text-sm border rounded px-2 py-1.5" />
-          <button class="col-span-4 w-fit text-sm px-4 py-2 rounded bg-indigo-600 text-white">+ 新增客戶</button>
+          <button class="col-span-3 w-fit text-sm px-4 py-2 rounded bg-indigo-600 text-white">+ 新增客戶</button>
         </form>
       </section>
 
-      <!-- ============ 線上卷宗與 AI 分析 ============ -->
+      <!-- ============ 文件與檔名產生器 ============ -->
       <section id="page-files" class="page space-y-4">
-        <h1 class="text-2xl font-bold text-slate-900">線上卷宗與 AI 分析</h1>
-        <p class="text-slate-500 text-sm -mt-2">檔名產生器：依事務所規則自動組成建議檔名，不會讀取 PDF 內容、也不會自動改實際檔案名稱</p>
+        <h1 class="text-2xl font-bold text-slate-900">文件與檔名產生器</h1>
+        <p class="text-slate-500 text-sm -mt-2">依事務所規則自動組成建議檔名，不會讀取 PDF 內容、也不會自動改實際檔案名稱</p>
         <div id="form-filenaming-wrap"></div>
         <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
           <div class="px-5 py-3 border-b border-slate-200 flex items-center justify-between">
@@ -360,42 +440,89 @@
             </label>
           </div>
 
-          <div class="flex justify-end gap-2">
+          <div class="flex justify-end gap-2 flex-wrap">
             <button id="btn-export-csv" type="button" class="text-xs px-3 py-1.5 rounded border border-slate-300 text-slate-600 hover:bg-slate-50">匯出開放式格式 (Google Sheets/CSV)</button>
+            <button id="btn-export-tax-xlsx" type="button" class="text-xs px-3 py-1.5 rounded border border-indigo-300 text-indigo-700 bg-indigo-50 hover:bg-indigo-100">📊 一鍵匯出報稅結案表 (Excel，企業客戶+結案兩分頁)</button>
             <button id="btn-export-pdf" type="button" title="尚未啟用：正式版將串接 PDF 產生服務，目前僅示意按鈕位置" class="text-xs px-3 py-1.5 rounded border border-slate-200 text-slate-400 cursor-not-allowed">匯出 PDF 承報書</button>
           </div>
 
-          <div class="overflow-hidden rounded-lg border border-slate-100">
+          <div class="overflow-x-auto rounded-lg border border-slate-100">
             <table class="w-full text-sm">
               <thead><tr class="text-left text-xs text-slate-500 border-b border-slate-100 bg-slate-50">
-                <th class="px-4 py-2.5 font-medium">案號</th>
-                <th class="px-4 py-2.5 font-medium">當事人</th>
-                <th class="px-4 py-2.5 font-medium">簽約總額</th>
-                <th class="px-4 py-2.5 font-medium">已收期款</th>
-                <th class="px-4 py-2.5 font-medium">未收尾款</th>
-                <th class="px-4 py-2.5 font-medium">代墊費用（裁判費/郵資）</th>
-                <th class="px-4 py-2.5 font-medium">稅務實際歸屬</th>
+                <th class="px-4 py-2.5 font-medium whitespace-nowrap">案號</th>
+                <th class="px-4 py-2.5 font-medium whitespace-nowrap">當事人</th>
+                <th class="px-4 py-2.5 font-medium whitespace-nowrap">客戶類型</th>
+                <th class="px-4 py-2.5 font-medium whitespace-nowrap">簽約總額</th>
+                <th class="px-4 py-2.5 font-medium whitespace-nowrap">已收期款</th>
+                <th class="px-4 py-2.5 font-medium whitespace-nowrap">未收尾款</th>
+                <th class="px-4 py-2.5 font-medium whitespace-nowrap">代墊費用（裁判費/郵資）</th>
+                <th class="px-4 py-2.5 font-medium whitespace-nowrap">代扣稅額</th>
+                <th class="px-4 py-2.5 font-medium whitespace-nowrap">稅務實際歸屬</th>
+                <th class="px-4 py-2.5 font-medium whitespace-nowrap">操作</th>
               </tr></thead>
               <tbody id="tax-cases-table-body" class="divide-y divide-slate-100"></tbody>
             </table>
           </div>
+          <div id="form-tax-case-wrap"></div>
         </div>
 
         <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
           <div class="px-5 pt-4 text-sm font-semibold text-slate-700">代墊款登記（簡易示範）</div>
           <table class="w-full text-sm">
             <thead><tr class="text-left text-xs text-slate-500 border-b border-slate-100 bg-slate-50">
-              <th class="px-5 py-2.5 font-medium">日期</th><th class="px-5 py-2.5 font-medium">案件/項目</th><th class="px-5 py-2.5 font-medium">金額</th><th class="px-5 py-2.5 font-medium">狀態</th>
+              <th class="px-5 py-2.5 font-medium">日期</th><th class="px-5 py-2.5 font-medium">案號</th><th class="px-5 py-2.5 font-medium">案件/項目</th><th class="px-5 py-2.5 font-medium">金額</th><th class="px-5 py-2.5 font-medium">狀態</th>
             </tr></thead>
             <tbody id="billing-table-body" class="divide-y divide-slate-100"></tbody>
           </table>
         </div>
-        <form id="form-billing" class="bg-white rounded-lg border border-slate-200 p-5 grid grid-cols-4 gap-3">
+        <form id="form-billing" class="bg-white rounded-lg border border-slate-200 p-5 grid grid-cols-5 gap-3">
           <input required type="date" name="date" class="text-sm border rounded px-2 py-1.5" />
+          <input name="caseNumber" placeholder="案號（選填，用來加總每案花費）" class="text-sm border rounded px-2 py-1.5" />
           <input required name="item" placeholder="案件/項目" class="text-sm border rounded px-2 py-1.5" />
           <input required type="number" name="amount" placeholder="金額" class="text-sm border rounded px-2 py-1.5" />
-          <label class="text-xs text-slate-500 flex items-center gap-2"><input type="checkbox" name="billed" /><span>已請款</span></label>
-          <button class="col-span-4 w-fit text-sm px-4 py-2 rounded bg-indigo-600 text-white">+ 新增代墊款</button>
+          <select name="advanceStatus" class="text-sm border rounded px-2 py-1.5"></select>
+          <button class="col-span-5 w-fit text-sm px-4 py-2 rounded bg-indigo-600 text-white">+ 新增代墊款</button>
+        </form>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+            <div class="px-5 pt-4 pb-2 text-sm font-semibold text-slate-700">應收款項總覽（依案件列表的應收款項欄位加總）</div>
+            <table class="w-full text-sm">
+              <thead><tr class="text-left text-xs text-slate-500 border-b border-slate-100 bg-slate-50">
+                <th class="px-5 py-2 font-medium">案號</th><th class="px-5 py-2 font-medium">當事人</th><th class="px-5 py-2 font-medium">承辦律師</th><th class="px-5 py-2 font-medium">應收款項</th>
+              </tr></thead>
+              <tbody id="receivables-table-body" class="divide-y divide-slate-100"></tbody>
+              <tfoot id="receivables-table-foot"></tfoot>
+            </table>
+          </div>
+          <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+            <div class="px-5 pt-4 pb-2 text-sm font-semibold text-slate-700">各案件花費總覽（依代墊款登記的案號自動加總）</div>
+            <table class="w-full text-sm">
+              <thead><tr class="text-left text-xs text-slate-500 border-b border-slate-100 bg-slate-50">
+                <th class="px-5 py-2 font-medium">案號</th><th class="px-5 py-2 font-medium">累計花費</th><th class="px-5 py-2 font-medium">筆數</th>
+              </tr></thead>
+              <tbody id="case-spending-table-body" class="divide-y divide-slate-100"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+          <div class="px-5 pt-4 pb-1 text-sm font-semibold text-slate-700">法律顧問契約到期提醒</div>
+          <p class="px-5 text-xs text-slate-400 pb-2">到期前1個月自動標示「即將到期」，到期前15天自動標示「提醒換約」</p>
+          <table class="w-full text-sm">
+            <thead><tr class="text-left text-xs text-slate-500 border-b border-slate-100 bg-slate-50">
+              <th class="px-5 py-2.5 font-medium">客戶</th><th class="px-5 py-2.5 font-medium">契約起日</th><th class="px-5 py-2.5 font-medium">到期日</th><th class="px-5 py-2.5 font-medium">年約金額</th><th class="px-5 py-2.5 font-medium">狀態</th><th class="px-5 py-2.5 font-medium">備註</th><th class="px-5 py-2.5 font-medium">操作</th>
+            </tr></thead>
+            <tbody id="retainer-table-body" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+        <form id="form-retainer" class="bg-white rounded-lg border border-slate-200 p-5 grid grid-cols-5 gap-3">
+          <input required name="clientName" placeholder="客戶名稱" class="text-sm border rounded px-2 py-1.5" />
+          <input required type="date" name="startDate" class="text-sm border rounded px-2 py-1.5" />
+          <input required type="date" name="endDate" class="text-sm border rounded px-2 py-1.5" />
+          <input type="number" min="0" name="amount" placeholder="年約金額（選填）" class="text-sm border rounded px-2 py-1.5" />
+          <input name="note" placeholder="備註（選填）" class="text-sm border rounded px-2 py-1.5" />
+          <button class="col-span-5 w-fit text-sm px-4 py-2 rounded bg-indigo-600 text-white">+ 新增法顧契約</button>
         </form>
       </section>
 
@@ -615,6 +742,8 @@
     { id: 'payment_order_objection', label: '支付命令送達 → 異議期間', eventType: '收到支付命令', days: 20 },
   ];
   function computeDeadlineDate(triggerDateISO, days) { return addDaysISO(triggerDateISO, days); }
+  // 2026-07-13 會議新增：期限提醒與末日提醒合併成一個表單，期限規則加「其他」讓天數可手動輸入
+  const DEADLINE_RULES_WITH_OTHER = [...DEADLINE_RULES, { id: 'other', label: '其他（手動輸入天數）', eventType: '期限', days: null }];
 
   // ---- fileNaming.js ----
   const FILE_NAMING_STATUS = 'DRAFT_DETERMINISTIC_NO_AI';
@@ -673,9 +802,17 @@
   function esc(s) { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; }
 
   // ---- caseStatus.js ----
-  const CASE_STATUSES = ['進行中', '待開庭', '調解中', '上訴中', '已結案'];
-  const CASE_STATUS_BADGE = { 進行中: 'bg-blue-50 text-blue-700', 待開庭: 'bg-slate-100 text-slate-600', 調解中: 'bg-purple-50 text-purple-700', 上訴中: 'bg-amber-50 text-amber-700', 已結案: 'bg-emerald-50 text-emerald-700' };
+  // 2026-07-10 會議新增：訴訟階段模型（原本 5 種概略狀態拆得更細）
+  const CASE_STAGES = ['委任', '起訴', '一審', '二審', '三審', '執行', '已結案'];
+  const CASE_STAGE_BADGE = { 委任: 'bg-slate-100 text-slate-600', 起訴: 'bg-blue-50 text-blue-700', 一審: 'bg-blue-50 text-blue-700', 二審: 'bg-amber-50 text-amber-700', 三審: 'bg-amber-50 text-amber-700', 執行: 'bg-purple-50 text-purple-700', 已結案: 'bg-emerald-50 text-emerald-700' };
+  // 舊版 5 狀態 → 新版訴訟階段的合理映射，讓 localStorage 裡的舊資料開啟時不會壞掉
+  const LEGACY_STATUS_MIGRATION = { 進行中: '起訴', 待開庭: '一審', 調解中: '委任', 上訴中: '二審', 已結案: '已結案' };
+  function migrateCaseStage(status) { return CASE_STAGES.includes(status) ? status : (LEGACY_STATUS_MIGRATION[status] || CASE_STAGES[0]); }
   function isClosedStatus(status) { return status === '已結案'; }
+
+  // 2026-07-10 會議新增：案件紀錄表欄位——委任狀態、費用收付狀態
+  const CONTRACT_STATUSES = ['未簽委任狀', '已簽未歸檔', '已簽已歸檔'];
+  const FEE_STATUSES = ['未收款', '已收部分款', '已收足全部款', '義務案件（免收費）'];
 
   // ---- 期日 ROC 顯示格式（115年07月10日） ----
   function isoToROC(dateISO) {
@@ -700,15 +837,15 @@
   const CLOSED_CASES_SEED = [{"attorney":"陳律師","closedDateRaw":"","closedDateJudgmentRaw":"114.02.10","person":"林秀維等","cause":"認可收養","caseNumberRaw":"113司養聲336","closingDocument":"桃園地院民事裁定","note":"撰狀未委任，不報結"},{"attorney":"陳律師","closedDateRaw":"","closedDateJudgmentRaw":"114.02.08","person":"江文榮","cause":"改定未成年子女\n權利義務行使負擔等","caseNumberRaw":"113家親聲655","closingDocument":"新北地院民事裁定","note":"撰狀未委任，不報結"},{"attorney":"陳律師","closedDateRaw":"114.03.06","closedDateJudgmentRaw":"","person":"王寶萱","cause":"損害賠償","caseNumberRaw":"113訴288","closingDocument":"士林地院民事判決","note":""},{"attorney":"陳律師","closedDateRaw":"114.03.07","closedDateJudgmentRaw":"","person":"蔡彥量","cause":"違反銀行法","caseNumberRaw":"114偵747","closingDocument":"新北地檢不起訴處分書","note":""},{"attorney":"陳律師","closedDateRaw":"114.03.19","closedDateJudgmentRaw":"","person":"空職工","cause":"不當勞動行為爭議","caseNumberRaw":"114審裁285","closingDocument":"憲法法庭裁定","note":""},{"attorney":"陳律師","closedDateRaw":"114.03.25","closedDateJudgmentRaw":"","person":"林千禾","cause":"違反稅捐稽徵法等","caseNumberRaw":"113偵46598\n113偵61936\n112偵49705\n114偵1177\n114偵7419","closingDocument":"新北地檢起訴書","note":""},{"attorney":"陳律師","closedDateRaw":"114.04.02","closedDateJudgmentRaw":"","person":"簡廷恩","cause":"違反毒品危害防制條例","caseNumberRaw":"113偵17604\n113偵59611\n113偵62482","closingDocument":"新北地檢起訴書","note":""},{"attorney":"陳律師","closedDateRaw":"114.04.02","closedDateJudgmentRaw":"","person":"徐瑋翔","cause":"離婚等","caseNumberRaw":"113家調2272\n114家調525\n114家非調343","closingDocument":"新北地院調解筆錄","note":""},{"attorney":"陳律師","closedDateRaw":"114.04.09","closedDateJudgmentRaw":"","person":"愷閎哥","cause":"詐欺等","caseNumberRaw":"113偵46137","closingDocument":"桃園地檢不起訴處分書","note":""},{"attorney":"陳律師","closedDateRaw":"114.04.10","closedDateJudgmentRaw":"","person":"林志威","cause":"拆屋還地調解","caseNumberRaw":"113司調23","closingDocument":"基隆地院民事裁定","note":""},{"attorney":"陳律師","closedDateRaw":"114.04.22","closedDateJudgmentRaw":"","person":"林宥緯","cause":"傷害等","caseNumberRaw":"113調偵1540","closingDocument":"士林地檢不起訴處分書","note":""},{"attorney":"陳律師","closedDateRaw":"114.04.22","closedDateJudgmentRaw":"","person":"林宥緯","cause":"妨害公務","caseNumberRaw":"","closingDocument":"士林地檢起訴書","note":""},{"attorney":"陳律師","closedDateRaw":"114.04.22","closedDateJudgmentRaw":"","person":"許錦隆","cause":"公共危險","caseNumberRaw":"114偵8329","closingDocument":"新北地檢緩起訴處分書","note":""},{"attorney":"陳律師","closedDateRaw":"114.04.23","closedDateJudgmentRaw":"","person":"王郁盛","cause":"聲請核發通常保護令","caseNumberRaw":"114家護9","closingDocument":"士林地院通常保護令","note":""},{"attorney":"陳律師","closedDateRaw":"114.04.24","closedDateJudgmentRaw":"","person":"張文萍","cause":"偽造文書","caseNumberRaw":"113易433","closingDocument":"士林地院刑事判決","note":""},{"attorney":"陳律師","closedDateRaw":"114.04.29","closedDateJudgmentRaw":"","person":"連智龍","cause":"拆屋還地","caseNumberRaw":"113訴638","closingDocument":"基隆地院和解筆錄","note":""},{"attorney":"陳律師","closedDateRaw":"114.05.02","closedDateJudgmentRaw":"","person":"張早光","cause":"性騷擾","caseNumberRaw":"114偵787","closingDocument":"基隆地檢起訴書","note":""},{"attorney":"陳律師","closedDateRaw":"114.05.05","closedDateJudgmentRaw":"","person":"簡廷恩","cause":"違反毒品危害防制條例","caseNumberRaw":"114偵17259","closingDocument":"新北地檢移送併辦意旨書","note":""},{"attorney":"陳律師","closedDateRaw":"114.05.07","closedDateJudgmentRaw":"","person":"空職工(參加人)","cause":"不當勞動行為爭議","caseNumberRaw":"113再37","closingDocument":"最高行院判決","note":""},{"attorney":"陳律師","closedDateRaw":"114.05.12","closedDateJudgmentRaw":"","person":"空職工","cause":"請求損害賠償","caseNumberRaw":"113台上1906","closingDocument":"最高法院民事判決","note":""},{"attorney":"陳律師","closedDateRaw":"114.05.12","closedDateJudgmentRaw":"","person":"錦達事業","cause":"發展觀光條例","caseNumberRaw":"113訴711","closingDocument":"北高行院判決","note":""},{"attorney":"陳律師","closedDateRaw":"114.05.19","closedDateJudgmentRaw":"","person":"林安樺","cause":"損害賠償","caseNumberRaw":"114司刑移調357","closingDocument":"雲林地院調解筆錄","note":"義務案件，不報事務所案件"},{"attorney":"陳律師","closedDateRaw":"114.05.23","closedDateJudgmentRaw":"","person":"吳宜達、蔡政豪","cause":"侵佔","caseNumberRaw":"114上易39","closingDocument":"高等法院刑事判決","note":""},{"attorney":"陳律師","closedDateRaw":"114.06.02","closedDateJudgmentRaw":"","person":"李欣泰","cause":"詐欺等","caseNumberRaw":"113偵6891\n113偵16793\n113偵17706","closingDocument":"彰化地檢起訴書","note":""},{"attorney":"陳律師","closedDateRaw":"114.06.04","closedDateJudgmentRaw":"","person":"許雅晶","cause":"家庭暴力罪之妨害性自主","caseNumberRaw":"113偵52640、\n113偵52649","closingDocument":"桃園地檢起訴書","note":""},{"attorney":"陳律師","closedDateRaw":"114.06.09","closedDateJudgmentRaw":"","person":"基隆市立建德幼兒園","cause":"履約爭議調解","caseNumberRaw":"調1130446","closingDocument":"工程會函","note":""},{"attorney":"陳律師","closedDateRaw":"114.06.12","closedDateJudgmentRaw":"","person":"倪俊祥、阮氏鮮","cause":"重傷害","caseNumberRaw":"114偵1500","closingDocument":"基隆地檢起訴書","note":"義務案件，不報事務所案件"},{"attorney":"陳律師","closedDateRaw":"114.06.13","closedDateJudgmentRaw":"","person":"謝承佑","cause":"妨害自由等","caseNumberRaw":"114偵22949","closingDocument":"桃園地檢不起訴處分書","note":"遞委任狀就結案未收費，不報事務所案件"},{"attorney":"陳律師","closedDateRaw":"114.06.13","closedDateJudgmentRaw":"","person":"毛榤鋐","cause":"侵權行為損害賠償","caseNumberRaw":"113竹東簡44","closingDocument":"民事撤回告訴狀","note":"撤告沒有案件紀錄，不報結"},{"attorney":"陳律師","closedDateRaw":"114.06.27","closedDateJudgmentRaw":"","person":"曲佳雲、桃園產總、長榮工會","cause":"不當勞動行為爭議","caseNumberRaw":"113勞裁38","closingDocument":"勞動部函文附裁決決定書","note":""},{"attorney":"陳律師","closedDateRaw":"114.07.02","closedDateJudgmentRaw":"","person":"賴正培","cause":"違反貪汙治罪條例等","caseNumberRaw":"112偵8377、\n112偵17147、\n113偵16026","closingDocument":"士林地檢起訴書","note":""},{"attorney":"陳律師","closedDateRaw":"114.07.03","closedDateJudgmentRaw":"","person":"李欣泰","cause":"詐欺等","caseNumberRaw":"114訴75","closingDocument":"臺北地院刑事判決","note":""},{"attorney":"陳律師","closedDateRaw":"114.07.08","closedDateJudgmentRaw":"","person":"陳俊維","cause":"過失致死","caseNumberRaw":"113偵40957","closingDocument":"新北地檢起訴書","note":""},{"attorney":"陳律師","closedDateRaw":"114.07.15","closedDateJudgmentRaw":"","person":"何達仲","cause":"詐欺等","caseNumberRaw":"113偵21914\n114偵3480","closingDocument":"士林地檢不起訴處分書","note":""},{"attorney":"陳律師","closedDateRaw":"114.07.16","closedDateJudgmentRaw":"","person":"蘇韓碤","cause":"詐欺等","caseNumberRaw":"114偵2067","closingDocument":"基隆地檢不起訴處分書","note":""},{"attorney":"陳律師","closedDateRaw":"114.07.17","closedDateJudgmentRaw":"","person":"劉子隆","cause":"銀行法等","caseNumberRaw":"113金訴78","closingDocument":"新北地院刑事判決","note":""},{"attorney":"陳律師","closedDateRaw":"114.07.17","closedDateJudgmentRaw":"","person":"蕭士島","cause":"過失傷害","caseNumberRaw":"114偵31890","closingDocument":"臺中地檢不起訴處分書","note":""},{"attorney":"陳律師","closedDateRaw":"114.07.30","closedDateJudgmentRaw":"","person":"林安樺","cause":"違反洗錢防制法","caseNumberRaw":"113金訴490","closingDocument":"雲林地院刑事判決","note":"義務案件，不報事務所案件"},{"attorney":"陳律師","closedDateRaw":"114.08.05","closedDateJudgmentRaw":"","person":"李欣泰","cause":"詐欺等","caseNumberRaw":"113金訴4486","closingDocument":"臺中地院刑事判決","note":""},{"attorney":"陳律師","closedDateRaw":"114.08.05","closedDateJudgmentRaw":"","person":"陳志峯","cause":"過失傷害","caseNumberRaw":"113偵25337","closingDocument":"新北地檢不起訴處分書","note":""},{"attorney":"陳律師","closedDateRaw":"114.08.06","closedDateJudgmentRaw":"","person":"馮翠芬","cause":"違反銀行法","caseNumberRaw":"114台上1321","closingDocument":"最高法院刑事判決","note":""},{"attorney":"陳律師","closedDateRaw":"114.08.15","closedDateJudgmentRaw":"","person":"吳宜達","cause":"妨害自由","caseNumberRaw":"113偵4839","closingDocument":"士林地檢不起訴處分書","note":""},{"attorney":"陳律師","closedDateRaw":"","closedDateJudgmentRaw":"","person":"","cause":"傷害","caseNumberRaw":"","closingDocument":"士林地檢起訴書","note":""},{"attorney":"陳律師","closedDateRaw":"114.08.19","closedDateJudgmentRaw":"","person":"","cause":"妨害自由等","caseNumberRaw":"113偵6748","closingDocument":"士林地檢不起訴處分書","note":""},{"attorney":"陳律師","closedDateRaw":"114.08.22\n114.09.19(同案)","closedDateJudgmentRaw":"","person":"戴志純","cause":"過失致死","caseNumberRaw":"114重附民31","closingDocument":"宜蘭地院和解筆錄","note":""},{"attorney":"陳律師","closedDateRaw":"","closedDateJudgmentRaw":"","person":"","cause":"","caseNumberRaw":"114交訴48","closingDocument":"宜蘭地院宣示判決筆錄","note":""},{"attorney":"陳律師","closedDateRaw":"114.08.29","closedDateJudgmentRaw":"","person":"喂藥案","cause":"毒品危害防制條例等","caseNumberRaw":"112偵續412、413","closingDocument":"新北地檢不起訴處分書","note":"義務案件，不報事務所案件\n\n對造：彭瑞君、趙珮欣、鍾侑倫、何怡君、徐睿彣、劉佳怡、林哲宇、王小蜜、洪敏珊"},{"attorney":"陳律師","closedDateRaw":"114.09.04","closedDateJudgmentRaw":"","person":"林軒如","cause":"銀行法等","caseNumberRaw":"113偵32530、\n113偵26280、\n113偵39248","closingDocument":"新北地檢不起訴處分書","note":""},{"attorney":"陳律師","closedDateRaw":"114.09.19","closedDateJudgmentRaw":"","person":"呂慶林","cause":"預為抵押權登記","caseNumberRaw":"原114上309","closingDocument":"最高法院民事裁定","note":""},{"attorney":"陳律師","closedDateRaw":"114.10.15","closedDateJudgmentRaw":"","person":"廖芬蘭","cause":"監護宣告","caseNumberRaw":"114監宣419","closingDocument":"桃園地院民事裁定","note":""},{"attorney":"陳律師","closedDateRaw":"114.10.20","closedDateJudgmentRaw":"","person":"李志鴻、李玉","cause":"拆屋還地","caseNumberRaw":"114宜簡173","closingDocument":"宜蘭地院簡易民事判決","note":""},{"attorney":"陳律師","closedDateRaw":"114.10.20","closedDateJudgmentRaw":"","person":"詹智鈞","cause":"確認僱傭關係存在","caseNumberRaw":"113台上1235","closingDocument":"最高法院民事判決","note":""},{"attorney":"陳律師","closedDateRaw":"114.10.22","closedDateJudgmentRaw":"","person":"林明德","cause":"組織犯罪防治條例等","caseNumberRaw":"114少連偵47\n113偵35914","closingDocument":"新北地檢不起訴處分書","note":""},{"attorney":"陳律師","closedDateRaw":"114.10.28","closedDateJudgmentRaw":"","person":"蘇芯菲","cause":"詐欺等","caseNumberRaw":"114偵5471、\n114偵6687","closingDocument":"基隆地檢起訴書","note":""},{"attorney":"陳律師","closedDateRaw":"114.11.18","closedDateJudgmentRaw":"","person":"馮翠芬","cause":"侵權行為損害賠償","caseNumberRaw":"114金訴易23","closingDocument":"高等法院民事判決","note":""},{"attorney":"陳律師","closedDateRaw":"114.11.19","closedDateJudgmentRaw":"","person":"吳宗翰","cause":"公共危險等","caseNumberRaw":"114調偵1654","closingDocument":"新北地檢不起訴處分書","note":""},{"attorney":"陳律師","closedDateRaw":"114.11.20","closedDateJudgmentRaw":"","person":"李欣泰","cause":"槍砲彈藥刀械管制條例等","caseNumberRaw":"114上訴4538","closingDocument":"高等法院刑事判決","note":""},{"attorney":"陳律師","closedDateRaw":"114.11.28","closedDateJudgmentRaw":"","person":"王寶萱","cause":"妨害名譽等","caseNumberRaw":"114偵2433","closingDocument":"士林地檢不起訴處分書","note":""},{"attorney":"陳律師","closedDateRaw":"114.12.02","closedDateJudgmentRaw":"","person":"李欣泰","cause":"詐欺等","caseNumberRaw":"114偵40065、\n114偵40066\n114偵40067","closingDocument":"新北地檢起訴書","note":""},{"attorney":"陳律師","closedDateRaw":"114.12.18","closedDateJudgmentRaw":"","person":"林長節","cause":"過失傷害","caseNumberRaw":"114偵5654","closingDocument":"基隆地檢起訴書","note":"未掛委任就結案，不報結"},{"attorney":"陳律師","closedDateRaw":"114.12.19","closedDateJudgmentRaw":"","person":"何達仲","cause":"詐欺","caseNumberRaw":"113偵4876","closingDocument":"花蓮地檢不起訴處分書","note":""},{"attorney":"陳律師","closedDateRaw":"115.01.07","closedDateJudgmentRaw":"","person":"游松崑","cause":"妨害性自主","caseNumberRaw":"114偵14061","closingDocument":"屏東地檢不起訴處分書","note":""},{"attorney":"陳律師","closedDateRaw":"115.01.13","closedDateJudgmentRaw":"","person":"許雅晶","cause":"家暴防治法","caseNumberRaw":"114偵10153","closingDocument":"基隆地檢不起訴處分書","note":""},{"attorney":"陳律師","closedDateRaw":"115.01.20","closedDateJudgmentRaw":"","person":"李信燕","cause":"背信","caseNumberRaw":"114調院偵3445","closingDocument":"桃園地檢不起訴處分書","note":""},{"attorney":"陳律師","closedDateRaw":"115.01.20","closedDateJudgmentRaw":"","person":"魏金戈","cause":"過失傷害","caseNumberRaw":"114審交易531","closingDocument":"臺北地院刑事判決","note":""},{"attorney":"陳律師","closedDateRaw":"115.01.21","closedDateJudgmentRaw":"","person":"屏基工會(參加人)","cause":"不當勞動行為爭議","caseNumberRaw":"111訴1472","closingDocument":"北高行判決","note":""},{"attorney":"陳律師","closedDateRaw":"115.01.29","closedDateJudgmentRaw":"","person":"林志威","cause":"拆屋還地","caseNumberRaw":"114訴521","closingDocument":"基隆地院民事判決","note":""},{"attorney":"陳律師","closedDateRaw":"115.01.29","closedDateJudgmentRaw":"","person":"王靖元、廖韋萲","cause":"公共危險等","caseNumberRaw":"114偵56032","closingDocument":"新北地檢不起訴處分書","note":""},{"attorney":"陳律師","closedDateRaw":"115.02.09","closedDateJudgmentRaw":"","person":"王彥中","cause":"過失致死","caseNumberRaw":"114調院偵4149","closingDocument":"桃園地檢起訴書","note":""},{"attorney":"陳律師","closedDateRaw":"115.02.11","closedDateJudgmentRaw":"","person":"桃園市空服員職業工會","cause":"給付薪資差額等","caseNumberRaw":"114勞上152","closingDocument":"高等法院和解筆錄","note":""},{"attorney":"陳律師","closedDateRaw":"115.02.12","closedDateJudgmentRaw":"","person":"蘇韓碤","cause":"侵權行為損害賠償","caseNumberRaw":"115移調3","closingDocument":"基隆地院和解筆錄","note":""},{"attorney":"陳律師","closedDateRaw":"115.02.23","closedDateJudgmentRaw":"","person":"劉佩珏","cause":"職災補償等","caseNumberRaw":"115勞移調12","closingDocument":"士林地院調解筆錄","note":""},{"attorney":"陳律師","closedDateRaw":"115.02.25","closedDateJudgmentRaw":"115.01.30","person":"梁語恩","cause":"通常保護令","caseNumberRaw":"114家護抗230","closingDocument":"新北地院民事裁定","note":""},{"attorney":"陳律師","closedDateRaw":"115.03.02","closedDateJudgmentRaw":"115.02.12","person":"陳俊維","cause":"過失致死","caseNumberRaw":"115交簡135","closingDocument":"新北地院刑事簡易判決","note":""},{"attorney":"陳律師","closedDateRaw":"115.03.03","closedDateJudgmentRaw":"115.02.13","person":"林安樺","cause":"詐欺等","caseNumberRaw":"114金訴1957","closingDocument":"新北地院刑事判決","note":""},{"attorney":"陳律師","closedDateRaw":"","closedDateJudgmentRaw":"115.03.01","person":"大於生醫","cause":"侵佔","caseNumberRaw":"114偵6379","closingDocument":"臺北地檢起訴書","note":""},{"attorney":"陳律師","closedDateRaw":"115.03.24","closedDateJudgmentRaw":"115.03.12","person":"錦達事業","cause":"發展觀光條例","caseNumberRaw":"114上379","closingDocument":"最高行政法院裁定","note":""},{"attorney":"陳律師","closedDateRaw":"","closedDateJudgmentRaw":"115.03.19","person":"林長節","cause":"損害賠償","caseNumberRaw":"115交附民移調25","closingDocument":"基隆地院調解筆錄","note":""},{"attorney":"陳律師","closedDateRaw":"","closedDateJudgmentRaw":"115.04.01","person":"廖松柏","cause":"過失傷害","caseNumberRaw":"114偵44715","closingDocument":"臺中地檢不起訴處分書","note":""},{"attorney":"陳律師","closedDateRaw":"","closedDateJudgmentRaw":"115.04.02","person":"李欣泰","cause":"槍砲彈藥刀械管制條例等","caseNumberRaw":"115台上652","closingDocument":"最高法院刑事判決","note":""},{"attorney":"陳律師","closedDateRaw":"","closedDateJudgmentRaw":"115.04.08","person":"詹智鈞","cause":"確認僱傭關係存在","caseNumberRaw":"115勞上移調4","closingDocument":"高等法院高雄分院調解筆錄","note":""},{"attorney":"陳律師","closedDateRaw":"","closedDateJudgmentRaw":"115.04.10","person":"竹南鎮公所企業工會","cause":"不當勞動行為裁決","caseNumberRaw":"114勞裁15","closingDocument":"勞動部裁決決定書","note":""},{"attorney":"陳律師","closedDateRaw":"","closedDateJudgmentRaw":"115.04.14","person":"許雅晶","cause":"家暴妨害性自主","caseNumberRaw":"114侵訴88","closingDocument":"桃園地院刑事判決","note":""},{"attorney":"陳律師","closedDateRaw":"","closedDateJudgmentRaw":"115.04.09","person":"蔡鄭香菊","cause":"過失傷害","caseNumberRaw":"114偵25194\n115調偵緝72","closingDocument":"臺北地檢不起訴處分書","note":""},{"attorney":"陳律師","closedDateRaw":"","closedDateJudgmentRaw":"115.04.29","person":"劉春、謝慕真","cause":"給付清潔費","caseNumberRaw":"115基小355","closingDocument":"基隆地院基隆簡易庭小額民事判決","note":""},{"attorney":"陳律師","closedDateRaw":"","closedDateJudgmentRaw":"115.05.08","person":"許雅晶","cause":"返還代墊未成年子女扶養費","caseNumberRaw":"115家親聲91","closingDocument":"桃園地院民事裁定","note":""},{"attorney":"陳律師","closedDateRaw":"","closedDateJudgmentRaw":"115.05.08","person":"許雅晶","cause":"離婚等","caseNumberRaw":"115婚59","closingDocument":"桃園地院民事判決","note":""},{"attorney":"陳律師","closedDateRaw":"","closedDateJudgmentRaw":"115.05.18","person":"林長節","cause":"過失傷害","caseNumberRaw":"114交易217","closingDocument":"基隆地院刑事判決","note":""},{"attorney":"陳律師","closedDateRaw":"","closedDateJudgmentRaw":"115.05.26","person":"曾春霞","cause":"偽造文書","caseNumberRaw":"114基簡832","closingDocument":"基隆地院刑事簡易判決","note":""},{"attorney":"陳律師","closedDateRaw":"","closedDateJudgmentRaw":"115.05.26","person":"王寶萱","cause":"侵權行為損害賠償","caseNumberRaw":"114上1026","closingDocument":"高等法院民事判決","note":""},{"attorney":"林律師","closedDateRaw":"(無資料)","closedDateJudgmentRaw":"","person":"經濟部大園產業園區服務中心","cause":"產業創新條例","caseNumberRaw":"113訴1358","closingDocument":"(無資料)","note":""},{"attorney":"林律師","closedDateRaw":"114.03.20","closedDateJudgmentRaw":"","person":"張一為","cause":"損害賠償","caseNumberRaw":"113重勞訴40","closingDocument":"臺北地院民事判決","note":""},{"attorney":"林律師","closedDateRaw":"114.03.27","closedDateJudgmentRaw":"","person":"耐斯生醫股份有限公司等","cause":"侵害商標權有關\n財產權爭議等","caseNumberRaw":"113民商訴41","closingDocument":"智財法院調解筆錄","note":""},{"attorney":"林律師","closedDateRaw":"114.04.02","closedDateJudgmentRaw":"","person":"鍾瑛縈","cause":"妨害自由","caseNumberRaw":"113上易960","closingDocument":"高等法院刑事判決","note":""},{"attorney":"林律師","closedDateRaw":"114.04.09","closedDateJudgmentRaw":"","person":"鍾瑛縈","cause":"背信等","caseNumberRaw":"111偵續544","closingDocument":"臺北地檢不起訴處分書","note":""},{"attorney":"林律師","closedDateRaw":"114.04.15","closedDateJudgmentRaw":"","person":"陳煜勛","cause":"給付退休金","caseNumberRaw":"114勞專調18","closingDocument":"桃園地院調解筆錄","note":""},{"attorney":"林律師","closedDateRaw":"114.05.29","closedDateJudgmentRaw":"","person":"柯淑惠等","cause":"請求撤銷股東會決議","caseNumberRaw":"114台上325","closingDocument":"最高法院刑事判決","note":""},{"attorney":"林律師","closedDateRaw":"114.07.18","closedDateJudgmentRaw":"","person":"曾明德等","cause":"所有權轉移登記","caseNumberRaw":"113重上更一139","closingDocument":"高等法院民事判決","note":""},{"attorney":"林律師","closedDateRaw":"114.09.10\n114.10.03(同案)","closedDateJudgmentRaw":"","person":"吳明達","cause":"損害賠償","caseNumberRaw":"114屏偵移調147\n113偵3509","closingDocument":"屏東地院調解筆錄\n屏東地檢不起訴處分書","note":""},{"attorney":"林律師","closedDateRaw":"114.09.22","closedDateJudgmentRaw":"","person":"果思設計","cause":"反還價金等","caseNumberRaw":"113重上657","closingDocument":"高等法院調解筆錄","note":""},{"attorney":"林律師","closedDateRaw":"114.10.15","closedDateJudgmentRaw":"","person":"柯淑惠等","cause":"背信","caseNumberRaw":"114上易1480","closingDocument":"高等法院刑事判決","note":""},{"attorney":"林律師","closedDateRaw":"114.11.10","closedDateJudgmentRaw":"","person":"曾明德等","cause":"所有權轉移登記","caseNumberRaw":"114台上1885","closingDocument":"最高法院民事裁定","note":""},{"attorney":"林律師","closedDateRaw":"114.11.26","closedDateJudgmentRaw":"","person":"元宸營造","cause":"支付命令","caseNumberRaw":"114司促31462","closingDocument":"新北地院支付命令","note":""},{"attorney":"林律師","closedDateRaw":"114.12.11","closedDateJudgmentRaw":"","person":"蔡勝美","cause":"返還土地","caseNumberRaw":"114北司調938","closingDocument":"臺北地院調解筆錄","note":""},{"attorney":"林律師","closedDateRaw":"115.02.05","closedDateJudgmentRaw":"","person":"新宏興營造","cause":"請求給付保險金等","caseNumberRaw":"114保險18","closingDocument":"高雄地院民事判決","note":""},{"attorney":"林律師","closedDateRaw":"","closedDateJudgmentRaw":"115.03.12","person":"陳詩惠","cause":"侵權行為損害賠償","caseNumberRaw":"114重簡2272","closingDocument":"新北地院民事判決","note":""},{"attorney":"林律師","closedDateRaw":"","closedDateJudgmentRaw":"115.03.23","person":"石修鳴","cause":"通常保護令","caseNumberRaw":"115家護324","closingDocument":"新北地院通常保護令","note":""},{"attorney":"王律師","closedDateRaw":"114.03.07","closedDateJudgmentRaw":"","person":"陳妍宇","cause":"請求確認本票債權不存在等","caseNumberRaw":"111訴240","closingDocument":"士林地院民事判決","note":""},{"attorney":"王律師","closedDateRaw":"114.03.14","closedDateJudgmentRaw":"","person":"周佳惠","cause":"請求不動產所有權轉移登記","caseNumberRaw":"112訴376","closingDocument":"新北地院民事判決","note":""},{"attorney":"王律師","closedDateRaw":"114.03.26","closedDateJudgmentRaw":"","person":"永好企業","cause":"債務人異議之訴","caseNumberRaw":"113上1100","closingDocument":"高等法院民事判決","note":""},{"attorney":"王律師","closedDateRaw":"114.04.08","closedDateJudgmentRaw":"","person":"廖姵婕","cause":"過失傷害","caseNumberRaw":"112北檢4498","closingDocument":"臺北地院簡易民事判決","note":""},{"attorney":"王律師","closedDateRaw":"114.04.15","closedDateJudgmentRaw":"","person":"方麥弗","cause":"偽造文書","caseNumberRaw":"113偵續443","closingDocument":"臺北地檢不起訴處分書","note":""},{"attorney":"王律師","closedDateRaw":"114.06.04","closedDateJudgmentRaw":"","person":"周佳惠、盧韻如","cause":"分割共有物","caseNumberRaw":"113訴1437","closingDocument":"新北地院民事判決","note":""},{"attorney":"王律師","closedDateRaw":"114.06.06","closedDateJudgmentRaw":"","person":"方麥弗","cause":"偽造文書","caseNumberRaw":"114上聲議3969","closingDocument":"高檢處分書","note":""},{"attorney":"王律師","closedDateRaw":"114.06.11","closedDateJudgmentRaw":"","person":"張淑琴等","cause":"過失致死","caseNumberRaw":"113續偵一2","closingDocument":"臺北地檢起訴書","note":""},{"attorney":"王律師","closedDateRaw":"114.07.14","closedDateJudgmentRaw":"","person":"張賴秀英等","cause":"確定界址","caseNumberRaw":"113簡上79","closingDocument":"臺北地院民事判決","note":""},{"attorney":"王律師","closedDateRaw":"114.07.28","closedDateJudgmentRaw":"","person":"賴韶廣","cause":"請求清算合夥事業等","caseNumberRaw":"113上487","closingDocument":"臺中高分院民事判決","note":""},{"attorney":"王律師","closedDateRaw":"114.07.29","closedDateJudgmentRaw":"","person":"陳姵蓁、蔡政哲","cause":"不動產所有權轉移登記","caseNumberRaw":"113訴2862","closingDocument":"新北地院民事判決","note":""},{"attorney":"王律師","closedDateRaw":"114.09.04","closedDateJudgmentRaw":"","person":"蕭光雄","cause":"請求撤銷贈予行為等","caseNumberRaw":"113重訴1019","closingDocument":"臺北地院民事判決","note":""},{"attorney":"王律師","closedDateRaw":"114.10.15","closedDateJudgmentRaw":"","person":"張秦纁","cause":"確認抵押權不存在等","caseNumberRaw":"113上406","closingDocument":"臺中高分院民事判決","note":""},{"attorney":"王律師","closedDateRaw":"114.10.20","closedDateJudgmentRaw":"","person":"永好企業","cause":"給付違約金","caseNumberRaw":"113北簡8186","closingDocument":"臺北地院簡易民事判決","note":""},{"attorney":"王律師","closedDateRaw":"114.11.17","closedDateJudgmentRaw":"","person":"蕭士島","cause":"過失傷害","caseNumberRaw":"114偵續290","closingDocument":"臺中地檢不起訴處分書","note":""},{"attorney":"王律師","closedDateRaw":"114.12.23","closedDateJudgmentRaw":"","person":"劉幼蘭","cause":"分割遺產調解","caseNumberRaw":"114家調1394","closingDocument":"新北地院調解不成立證明書","note":""},{"attorney":"王律師","closedDateRaw":"115.02.03","closedDateJudgmentRaw":"","person":"簡佳誼","cause":"損害賠償","caseNumberRaw":"114士簡1399","closingDocument":"士林地院民事簡易判決","note":""},{"attorney":"王律師","closedDateRaw":"","closedDateJudgmentRaw":"115.03.04","person":"賴韶廣","cause":"清算合夥事業等","caseNumberRaw":"114台上2159","closingDocument":"最高法院民事裁定","note":""},{"attorney":"王律師","closedDateRaw":"","closedDateJudgmentRaw":"115.03.10","person":"林政穎","cause":"詐欺","caseNumberRaw":"114偵63519、\n115偵8219、\n115偵13688","closingDocument":"新北地檢起訴書、新北地檢不起訴處分書","note":""},{"attorney":"王律師","closedDateRaw":"","closedDateJudgmentRaw":"115.03.18","person":"方麥弗","cause":"許可執行外國法院確定判決","caseNumberRaw":"114台上707","closingDocument":"最高法院民事判決","note":""},{"attorney":"王律師","closedDateRaw":"","closedDateJudgmentRaw":"115.05.08","person":"二本松有限公司","cause":"確認僱傭關係存在等","caseNumberRaw":"114勞訴253","closingDocument":"臺北地院民事判決","note":""},{"attorney":"程律師","closedDateRaw":"114.06.18","closedDateJudgmentRaw":"","person":"林錦毅","cause":"侵佔等","caseNumberRaw":"114偵3597","closingDocument":"新北地檢不起訴處分書","note":""}];
 
   const SEED_CASES = [
-    { id: 'c1', caseNumber: '113訴288', title: '王寶萱 損害賠償', attorney: '陳愷閎律師', status: '進行中' },
-    { id: 'c2', caseNumber: '115婚59', title: '許雅晶 離婚等', attorney: '陳愷閎律師', status: '待開庭' },
-    { id: 'c3', caseNumber: '113訴1437', title: '周佳惠、盧韻如 分割共有物', attorney: '王雅楨律師', status: '進行中' },
+    { id: 'c1', caseNumber: '113訴288', title: '王寶萱 損害賠償', attorney: '陳愷閎律師', status: '起訴', opponentName: '林建成', opponentAttorney: '—', opponentContact: '', contractStatus: '已簽已歸檔', feeStatus: '已收部分款', mediationOngoing: false },
+    { id: 'c2', caseNumber: '115婚59', title: '許雅晶 離婚等', attorney: '陳愷閎律師', status: '一審', opponentName: '許雅晶配偶', opponentAttorney: '', opponentContact: '', contractStatus: '已簽已歸檔', feeStatus: '已收足全部款', mediationOngoing: true },
+    { id: 'c3', caseNumber: '113訴1437', title: '周佳惠、盧韻如 分割共有物', attorney: '王雅楨律師', status: '起訴', opponentName: '對造地主', opponentAttorney: '', opponentContact: '', contractStatus: '已簽未歸檔', feeStatus: '未收款', mediationOngoing: false },
   ];
 
   const SEED_HEARINGS = [
-    { id: 'h1', caseId: 'c-suhan', date: '2026-07-10', time: '09:30', allDay: false, attorney: '陳愷閎律師', courtNameRaw: '臺灣士林地方法院刑事庭', courtAbbrev: '士林刑庭', person: '蘇韓碤', opponent: '—', division: '—', cause: '詐欺等', caseNumberDisplay: '114偵2067', title: '09:30 陳律師-士林刑庭-蘇韓碤-詐欺等-114偵2067', progress: 75 },
-    { id: 'h2', caseId: 'c3', date: '2026-07-22', time: '14:00', allDay: false, attorney: '王雅楨律師', courtNameRaw: '臺灣新北地方法院民事庭', courtAbbrev: '新北民庭', person: '周佳惠、盧韻如', opponent: '對造地主', division: '—', cause: '分割共有物', caseNumberDisplay: '113訴1437', title: '14:00 王律師-新北民庭-周佳惠、盧韻如-分割共有物-113訴1437', progress: 25 },
-    { id: 'h3', caseId: null, date: '2026-07-30', time: '', allDay: true, attorney: '林紫彤律師', courtNameRaw: '智慧財產及商業法院', courtAbbrev: '智慧財產及商業法院', person: '耐斯生醫股份有限公司等', opponent: '—', division: '—', cause: '侵害商標權有關財產權爭議等', caseNumberDisplay: '113民商訴41', title: '林律師-智慧財產及商業法院-耐斯生醫股份有限公司等-侵害商標權有關財產權爭議等-113民商訴41', progress: 50 },
+    { id: 'h1', caseId: 'c-suhan', date: '2026-07-10', time: '09:30', allDay: false, attorneys: ['陳愷閎律師'], courtNameRaw: '臺灣士林地方法院刑事庭', courtAbbrev: '士林刑庭', person: '蘇韓碤', opponent: '—', division: '—', cause: '詐欺等', caseNumberDisplay: '114偵2067', title: '09:30 陳律師-士林刑庭-蘇韓碤-詐欺等-114偵2067', progress: 75 },
+    { id: 'h2', caseId: 'c3', date: '2026-07-22', time: '14:00', allDay: false, attorneys: ['王雅楨律師', '陳愷閎律師'], courtNameRaw: '臺灣新北地方法院民事庭', courtAbbrev: '新北民庭', person: '周佳惠、盧韻如', opponent: '對造地主', division: '—', cause: '分割共有物', caseNumberDisplay: '113訴1437', title: '14:00 王律師/陳律師-新北民庭-周佳惠、盧韻如-分割共有物-113訴1437', progress: 25 },
+    { id: 'h3', caseId: null, date: '2026-07-30', time: '', allDay: true, attorneys: ['林紫彤律師'], courtNameRaw: '智慧財產及商業法院', courtAbbrev: '智慧財產及商業法院', person: '耐斯生醫股份有限公司等', opponent: '—', division: '—', cause: '侵害商標權有關財產權爭議等', caseNumberDisplay: '113民商訴41', title: '林律師-智慧財產及商業法院-耐斯生醫股份有限公司等-侵害商標權有關財產權爭議等-113民商訴41', progress: 50 },
   ];
 
   const SEED_DEADLINES = (function () {
@@ -741,19 +878,34 @@
   ];
 
   const SEED_BILLING = [
-    { id: 'b1', date: '2026-06-20', item: '113訴288 裁判費代墊', amount: 3000, billed: true },
-    { id: 'b2', date: '2026-07-02', item: '115婚59 郵電費代墊', amount: 450, billed: false },
+    { id: 'b1', date: '2026-06-20', caseNumber: '113訴288', item: '113訴288 裁判費代墊', amount: 3000, advanceStatus: '完成' },
+    { id: 'b2', date: '2026-07-02', caseNumber: '115婚59', item: '115婚59 郵電費代墊', amount: 450, advanceStatus: '已收未繳' },
+  ];
+
+  // 2026-07-13 會議新增：代墊款狀態四選項（沒繳/已收未繳/已繳未收/完成）
+  const ADVANCE_STATUSES = ['沒繳', '已收未繳', '已繳未收', '完成'];
+  const ADVANCE_STATUS_BADGE = { 沒繳: 'text-slate-500', 已收未繳: 'text-amber-600', 已繳未收: 'text-blue-600', 完成: 'text-emerald-600' };
+  // 2026-07-13 會議新增：代辦與進度總表「最近收文」欄位的文件類型選項
+  const RECEIVED_DOC_TYPES = ['起訴狀', '答辯狀', '傳票', '裁定', '判決書', '開庭通知書', '其他'];
+  // 2026-07-13 會議新增：法律顧問契約到期提醒（到期前1個月提醒到期、到期前15天提醒換約）
+  const SEED_RETAINER_CONTRACTS = [
+    { id: 'rc1', clientName: '大恆科技股份有限公司', startDate: '2025-08-01', endDate: '2026-07-28', amount: 240000, note: '常年法律顧問（115年度顧字第03號）' },
+    { id: 'rc2', clientName: '新光紡織企業社', startDate: '2025-08-15', endDate: '2026-07-13', amount: 120000, note: '常年法律顧問（115年度顧字第07號）' },
+    { id: 'rc3', clientName: '錦達事業', startDate: '2026-01-01', endDate: '2026-12-31', amount: 180000, note: '' },
   ];
 
   // 2026-07-09 會議新增：稅務歸屬總表（企業客戶現金制 vs 律師掛名個案結案制）
   const TAX_OWNER_OPTIONS = ['歸屬所長', '歸屬陳律師', '歸屬林律師', '平行單位合辦（各半）', '義務案件（免稅）'];
+  // 2026-07-13 新增：參考「113結案表(報稅)例稿」補上的欄位
+  const CLIENT_TYPES = ['企業客戶', '個人客戶'];
+  const WITHHOLDING_TAX_RATE = 0.1; // 發票金額（未稅）× 10%，無免稅門檻（丁一朗確認）
   const SEED_TAX_CASES = [
-    { id: 't1', yearType: 'current', caseNumber: '115年度顧字第03號', person: '大恆科技股份有限公司', contractTotal: 240000, receivedInstallments: 120000, unreceivedBalance: 120000, advancedExpenses: 0, taxOwner: '歸屬所長' },
-    { id: 't2', yearType: 'current', caseNumber: '115年度顧字第07號', person: '新光紡織企業社', contractTotal: 120000, receivedInstallments: 60000, unreceivedBalance: 60000, advancedExpenses: 800, taxOwner: '歸屬陳律師' },
-    { id: 't3', yearType: 'current', caseNumber: '115訴289', person: '王小明', contractTotal: 80000, receivedInstallments: 80000, unreceivedBalance: 0, advancedExpenses: 3200, taxOwner: '歸屬陳律師' },
-    { id: 't4', yearType: 'closed', caseNumber: '113訴288', person: '林建成', contractTotal: 150000, receivedInstallments: 150000, unreceivedBalance: 0, advancedExpenses: 3000, taxOwner: '歸屬林律師' },
-    { id: 't5', yearType: 'closed', caseNumber: '114偵2067', person: '蘇韓碤', contractTotal: 60000, receivedInstallments: 60000, unreceivedBalance: 0, advancedExpenses: 1200, taxOwner: '平行單位合辦（各半）' },
-    { id: 't6', yearType: 'closed', caseNumber: '114家聲112', person: '許雅晶', contractTotal: 0, receivedInstallments: 0, unreceivedBalance: 0, advancedExpenses: 450, taxOwner: '義務案件（免稅）' },
+    { id: 't1', yearType: 'current', caseNumber: '115年度顧字第03號', person: '大恆科技股份有限公司', clientType: '企業客戶', cause: '常年法律顧問', court: '', intakeDate: '115.01.01', closedDate: '', closingDocument: '', invoiceIncludesTax: true, contractTotal: 240000, receivedInstallments: 120000, unreceivedBalance: 120000, advancedExpenses: 0, withholdingTax: 24000, taxOwner: '歸屬所長' },
+    { id: 't2', yearType: 'current', caseNumber: '115年度顧字第07號', person: '新光紡織企業社', clientType: '企業客戶', cause: '常年法律顧問', court: '', intakeDate: '115.02.15', closedDate: '', closingDocument: '', invoiceIncludesTax: true, contractTotal: 120000, receivedInstallments: 60000, unreceivedBalance: 60000, advancedExpenses: 800, withholdingTax: 12000, taxOwner: '歸屬陳律師' },
+    { id: 't3', yearType: 'current', caseNumber: '115訴289', person: '王小明', clientType: '個人客戶', cause: '損害賠償', court: '士林地方法院', intakeDate: '115.03.01', closedDate: '', closingDocument: '', invoiceIncludesTax: false, contractTotal: 80000, receivedInstallments: 80000, unreceivedBalance: 0, advancedExpenses: 3200, withholdingTax: 8000, taxOwner: '歸屬陳律師' },
+    { id: 't4', yearType: 'closed', caseNumber: '113訴288', person: '林建成', clientType: '個人客戶', cause: '損害賠償', court: '士林地方法院', intakeDate: '', closedDate: '114.03.06', closingDocument: '士林地院民事判決', invoiceIncludesTax: false, contractTotal: 150000, receivedInstallments: 150000, unreceivedBalance: 0, advancedExpenses: 3000, withholdingTax: 15000, taxOwner: '歸屬林律師' },
+    { id: 't5', yearType: 'closed', caseNumber: '114偵2067', person: '蘇韓碤', clientType: '個人客戶', cause: '詐欺等', court: '基隆地檢', intakeDate: '', closedDate: '114.07.16', closingDocument: '基隆地檢不起訴處分書', invoiceIncludesTax: false, contractTotal: 60000, receivedInstallments: 60000, unreceivedBalance: 0, advancedExpenses: 1200, withholdingTax: 6000, taxOwner: '平行單位合辦（各半）' },
+    { id: 't6', yearType: 'closed', caseNumber: '114家聲112', person: '許雅晶', clientType: '個人客戶', cause: '離婚等', court: '桃園地院', intakeDate: '', closedDate: '115.05.08', closingDocument: '桃園地院民事裁定', invoiceIncludesTax: false, contractTotal: 0, receivedInstallments: 0, unreceivedBalance: 0, advancedExpenses: 450, withholdingTax: 0, taxOwner: '義務案件（免稅）' },
   ];
 
   // ==========================================================================
@@ -762,15 +914,33 @@
   function loadState(key, fallback) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; } }
   function saveState(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
 
-  let cases = loadState('lf_cases', SEED_CASES);
-  let hearings = loadState('lf_hearings', SEED_HEARINGS);
+  let cases = loadState('lf_cases', SEED_CASES).map((c) => ({
+    opponentName: '', opponentAttorney: '', opponentContact: '', contractStatus: CONTRACT_STATUSES[0], feeStatus: FEE_STATUSES[0], mediationOngoing: false,
+    receivable: 0, lastReceivedDate: '', lastReceivedType: '',
+    ...c, status: migrateCaseStage(c.status),
+  }));
+  // 舊資料可能是單一 attorney 字串，遷移成 attorneys 陣列（承辦律師改複選）
+  let hearings = loadState('lf_hearings', SEED_HEARINGS).map((h) => ({
+    ...h, attorneys: h.attorneys || (h.attorney ? [h.attorney] : []),
+  }));
   let deadlines = loadState('lf_deadlines', SEED_DEADLINES);
   let closedCases = loadState('lf_closedCases', []);
   let closedCasesImported = loadState('lf_closedCasesImported', false);
   let filesList = loadState('lf_files', SEED_FILES);
-  let clients = loadState('lf_clients', SEED_CLIENTS);
-  let billing = loadState('lf_billing', SEED_BILLING);
-  let taxCases = loadState('lf_taxCases', SEED_TAX_CASES);
+  // 2026-07-13 會議新增：客戶資料加身分證號/地址欄位（既有資料回填空字串）
+  let clients = loadState('lf_clients', SEED_CLIENTS).map((c) => ({ idNumber: '', address: '', ...c }));
+  // 2026-07-13 新增：代墊款狀態改四選項，舊資料的布林值 billed 遷移成 advanceStatus（true→完成／false→沒繳）
+  let billing = loadState('lf_billing', SEED_BILLING).map((b) => ({
+    caseNumber: '', advanceStatus: b.billed ? '完成' : '沒繳',
+    ...b,
+  }));
+  // 2026-07-13 新增：舊資料回填新欄位空值（所屬法院/案由/接案時間/結案日期/結案文件/發票含稅/客戶類型/代扣稅額）
+  let taxCases = loadState('lf_taxCases', SEED_TAX_CASES).map((t) => ({
+    clientType: CLIENT_TYPES[0], cause: '', court: '', intakeDate: '', closedDate: '', closingDocument: '', invoiceIncludesTax: false, withholdingTax: 0,
+    ...t,
+  }));
+  // 2026-07-13 新增：法律顧問契約到期提醒
+  let retainerContracts = loadState('lf_retainerContracts', SEED_RETAINER_CONTRACTS);
   let billingTab = 'current'; // 'current' = 當年度申報（現金制-企業客戶）, 'closed' = 歷年總表（結案制-律師掛名個案）
   let billingChenOnly = false;
 
@@ -778,7 +948,7 @@
     saveState('lf_cases', cases); saveState('lf_hearings', hearings); saveState('lf_deadlines', deadlines);
     saveState('lf_closedCases', closedCases); saveState('lf_closedCasesImported', closedCasesImported);
     saveState('lf_files', filesList); saveState('lf_clients', clients); saveState('lf_billing', billing);
-    saveState('lf_taxCases', taxCases);
+    saveState('lf_taxCases', taxCases); saveState('lf_retainerContracts', retainerContracts);
   }
 
   const TODAY = '2026-07-08';
@@ -818,12 +988,14 @@
     const upcomingDeadlines = deadlines.filter((d) => d.computedDeadline && withinDays(d.computedDeadline, TODAY, 30));
     const upcomingHearings = hearings.filter((h) => withinDays(h.date, TODAY, 30));
     const filesUnnamed = filesList.filter((f) => !f.suggestedFileName).length;
+    const upcomingRetainers = retainerContracts.filter((r) => r.endDate && withinDays(r.endDate, TODAY, 30));
 
     const cards = [
       { label: '未來30天末日/提醒', value: upcomingDeadlines.length, sub: '案件與時效頁' },
       { label: '未來30天開庭', value: upcomingHearings.length, sub: '案件與時效頁' },
       { label: '結案案件表', value: closedCasesImported ? closedCases.length + ' 筆' : '尚未匯入', sub: '結案案件表頁' },
       { label: '卷宗待命名', value: filesUnnamed, sub: '線上卷宗頁' },
+      { label: '法顧契約即將到期', value: upcomingRetainers.length, sub: '財務與代墊款頁' },
     ];
     document.getElementById('dash-cards').innerHTML = cards.map((c) => `
       <div class="bg-white rounded-lg border border-slate-200 p-4">
@@ -834,7 +1006,8 @@
 
     const items = [
       ...upcomingHearings.map((h) => ({ date: h.date, label: `📅 開庭：${h.title}` })),
-      ...upcomingDeadlines.map((d) => ({ date: d.computedDeadline, label: `${d.kind === 'reminder' ? '🔔 提醒' : '⏰ 末日'}：${d.displayTitle}` })),
+      ...upcomingDeadlines.map((d) => ({ date: d.computedDeadline, label: `${d.kind === 'reminder' ? '🔔 提醒' : d.kind === 'transcript' ? '📼 筆錄調閱' : '⏰ 末日'}：${d.displayTitle}` })),
+      ...upcomingRetainers.map((r) => { const remain = daysUntil(r.endDate); return { date: r.endDate, label: `📄 法顧契約${remain <= 15 ? '換約提醒' : '即將到期'}：${r.clientName}` }; }),
     ].sort((a, b) => a.date.localeCompare(b.date));
     document.getElementById('dash-upcoming').innerHTML = items.length
       ? items.map((i) => `<div class="flex gap-3"><span class="font-mono text-xs text-slate-400 w-24 flex-shrink-0">${esc(i.date)}</span><span>${esc(i.label)}</span></div>`).join('')
@@ -845,6 +1018,20 @@
   // 案件與時效
   // ==========================================================================
   let showClosedCases = false;
+  // 2026-07-13 會議新增：案件與客戶資料互通（用姓名比對，不新增外鍵，沿用既有 CRM 搜尋的比對邏輯）
+  function getCaseClientMatch(c) {
+    const title = (c.title || '').trim();
+    if (!title) return null;
+    return clients.find((cl) => cl.name && title.startsWith(cl.name)) || clients.find((cl) => cl.name && title.includes(cl.name)) || null;
+  }
+  function getClientCaseMatches(client) {
+    const nameKey = (client.name || '').trim();
+    if (!nameKey) return { open: [], closedList: [] };
+    const open = cases.filter((c) => (c.title || '').includes(nameKey));
+    const closedList = closedCases.filter((cc) => (cc.person || '').includes(nameKey));
+    return { open, closedList };
+  }
+
   function renderCasesTable() {
     const closedCount = cases.filter((c) => isClosedStatus(c.status)).length;
     const toggleBtn = document.getElementById('btn-toggle-closed-cases');
@@ -852,25 +1039,74 @@
     toggleBtn.textContent = showClosedCases ? `隱藏已結案（${closedCount} 件）` : `顯示已結案（${closedCount} 件）`;
 
     const visible = showClosedCases ? cases : cases.filter((c) => !isClosedStatus(c.status));
-    document.getElementById('cases-table-body').innerHTML = visible.map((c) => `
+    document.getElementById('cases-table-body').innerHTML = visible.map((c) => {
+      const matchedClient = getCaseClientMatch(c);
+      return `
       <tr class="hover:bg-slate-50">
         <td class="px-3 py-2 font-mono text-xs">${esc(c.caseNumber)}</td>
-        <td class="px-3 py-2">${esc(c.title)}</td>
-        <td class="px-3 py-2 text-slate-500">${esc(calendarLabelFor(c.attorney))}</td>
         <td class="px-3 py-2">
-          <select data-case-id="${esc(c.id)}" class="case-status-select text-xs px-2 py-0.5 rounded-full border-0 ${CASE_STATUS_BADGE[c.status] || 'bg-slate-100 text-slate-600'}">
-            ${CASE_STATUSES.map((s) => `<option value="${esc(s)}" ${c.status === s ? 'selected' : ''}>${esc(s)}</option>`).join('')}
+          <div>${esc(c.title)}</div>
+          ${matchedClient ? `<div class="text-[11px] text-slate-400 mt-0.5">客戶資料：${esc(matchedClient.phone) || '—'}${matchedClient.idNumber ? ' · ' + esc(matchedClient.idNumber) : ''}</div>` : ''}
+        </td>
+        <td class="px-3 py-2 text-slate-500">${esc(c.attorney)}</td>
+        <td class="px-3 py-2 text-xs">
+          ${esc(c.opponentName) || '<span class="text-slate-300">—</span>'}
+          ${c.opponentAttorney ? `<div class="text-slate-400">律師：${esc(c.opponentAttorney)}</div>` : ''}
+          ${c.opponentContact ? `<div class="text-slate-400">${esc(c.opponentContact)}</div>` : ''}
+        </td>
+        <td class="px-3 py-2">
+          <select data-case-id="${esc(c.id)}" class="case-contract-select text-xs border rounded px-1.5 py-1">
+            ${CONTRACT_STATUSES.map((s) => `<option value="${esc(s)}" ${c.contractStatus === s ? 'selected' : ''}>${esc(s)}</option>`).join('')}
           </select>
         </td>
-      </tr>`).join('') || '<tr><td class="px-3 py-3 text-slate-400" colspan="4">尚無案件</td></tr>';
+        <td class="px-3 py-2">
+          <select data-case-id="${esc(c.id)}" class="case-fee-select text-xs border rounded px-1.5 py-1">
+            ${FEE_STATUSES.map((s) => `<option value="${esc(s)}" ${c.feeStatus === s ? 'selected' : ''}>${esc(s)}</option>`).join('')}
+          </select>
+        </td>
+        <td class="px-3 py-2">
+          <input type="number" min="0" data-case-id="${esc(c.id)}" class="case-receivable-input w-24 text-xs border rounded px-1.5 py-1" value="${Number(c.receivable) || 0}" />
+        </td>
+        <td class="px-3 py-2">
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <select data-case-id="${esc(c.id)}" class="case-status-select text-xs px-2 py-0.5 rounded-full border-0 ${CASE_STAGE_BADGE[c.status] || 'bg-slate-100 text-slate-600'}">
+              ${CASE_STAGES.map((s) => `<option value="${esc(s)}" ${c.status === s ? 'selected' : ''}>${esc(s)}</option>`).join('')}
+            </select>
+            ${c.mediationOngoing ? '<span class="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-50 text-purple-700">調解中</span>' : ''}
+          </div>
+        </td>
+      </tr>`;
+    }).join('') || '<tr><td class="px-3 py-3 text-slate-400" colspan="8">尚無案件</td></tr>';
     document.querySelectorAll('.case-status-select').forEach((sel) => {
       sel.addEventListener('change', (e) => {
         const c = cases.find((x) => x.id === e.target.dataset.caseId);
         if (c) { c.status = e.target.value; persistAll(); renderCasesTable(); }
       });
     });
+    document.querySelectorAll('.case-contract-select').forEach((sel) => {
+      sel.addEventListener('change', (e) => {
+        const c = cases.find((x) => x.id === e.target.dataset.caseId);
+        if (c) { c.contractStatus = e.target.value; persistAll(); }
+      });
+    });
+    document.querySelectorAll('.case-fee-select').forEach((sel) => {
+      sel.addEventListener('change', (e) => {
+        const c = cases.find((x) => x.id === e.target.dataset.caseId);
+        if (c) { c.feeStatus = e.target.value; persistAll(); }
+      });
+    });
+    document.querySelectorAll('.case-receivable-input').forEach((inp) => {
+      inp.addEventListener('change', (e) => {
+        const c = cases.find((x) => x.id === e.target.dataset.caseId);
+        if (c) { c.receivable = Number(e.target.value) || 0; persistAll(); renderBilling(); }
+      });
+    });
     const attorneySel = document.querySelector('#form-case select[name=attorney]');
     if (attorneySel) attorneySel.innerHTML = ATTORNEYS.map((a) => `<option value="${esc(a.fullName)}">${esc(a.fullName)}</option>`).join('');
+    const contractSel = document.querySelector('#form-case select[name=contractStatus]');
+    if (contractSel && !contractSel.options.length) contractSel.innerHTML = CONTRACT_STATUSES.map((s) => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+    const feeSel = document.querySelector('#form-case select[name=feeStatus]');
+    if (feeSel && !feeSel.options.length) feeSel.innerHTML = FEE_STATUSES.map((s) => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
   }
   document.getElementById('btn-toggle-closed-cases').addEventListener('click', () => { showClosedCases = !showClosedCases; renderCasesTable(); });
   document.getElementById('link-to-closed-cases').addEventListener('click', (e) => { e.preventDefault(); showPage('page-closed-cases'); });
@@ -878,22 +1114,28 @@
   // ---- 2026-07-09 會議新增：代辦與進度總表（合併開庭+末日提醒為單一待辦視圖） ----
   function buildTodoItems() {
     const caseLookup = Object.fromEntries(cases.map((c) => [c.id, c]));
-    const hearingItems = hearings.map((h) => ({
-      id: 'h-' + h.id, date: h.date,
-      caseNumberDisplay: h.caseNumberDisplay || caseLookup[h.caseId]?.caseNumber || '',
-      division: h.division || '—', person: h.person || '', opponent: h.opponent || '—',
-      attorney: h.attorney || caseLookup[h.caseId]?.attorney || '',
-      itemLabel: `📅 開庭：${h.cause || h.title || ''}`,
-      progress: h.progress ?? 25, ref: h,
-    }));
-    const deadlineItems = deadlines.map((d) => ({
-      id: 'd-' + d.id, date: d.computedDeadline,
-      caseNumberDisplay: d.caseNumberDisplay || caseLookup[d.caseId]?.caseNumber || '',
-      division: d.division || '—', person: d.person || '', opponent: d.opponent || '—',
-      attorney: d.attorney || caseLookup[d.caseId]?.attorney || '',
-      itemLabel: `${d.kind === 'reminder' ? '🔔 提醒' : '⏰ 代辦'}：${d.action || d.eventType || ''}`,
-      progress: d.progress ?? 25, ref: d,
-    }));
+    const caseByNumber = Object.fromEntries(cases.filter((c) => c.caseNumber).map((c) => [c.caseNumber, c]));
+    const resolveCaseRef = (caseId, caseNumberDisplay) => caseLookup[caseId] || caseByNumber[caseNumberDisplay] || null;
+    const hearingItems = hearings.map((h) => {
+      const caseNumberDisplay = h.caseNumberDisplay || caseLookup[h.caseId]?.caseNumber || '';
+      return {
+        id: 'h-' + h.id, date: h.date, caseNumberDisplay,
+        division: h.division || '—', person: h.person || '', opponent: h.opponent || '—',
+        attorney: (h.attorneys && h.attorneys.length ? h.attorneys.join('、') : '') || caseLookup[h.caseId]?.attorney || '',
+        itemLabel: `📅 開庭：${h.cause || h.title || ''}`,
+        progress: h.progress ?? 25, ref: h, kind: 'hearing', caseRef: resolveCaseRef(h.caseId, caseNumberDisplay),
+      };
+    });
+    const deadlineItems = deadlines.map((d) => {
+      const caseNumberDisplay = d.caseNumberDisplay || caseLookup[d.caseId]?.caseNumber || '';
+      return {
+        id: 'd-' + d.id, date: d.computedDeadline, caseNumberDisplay,
+        division: d.division || '—', person: d.person || '', opponent: d.opponent || '—',
+        attorney: d.attorney || caseLookup[d.caseId]?.attorney || '',
+        itemLabel: `${d.kind === 'reminder' ? '🔔 提醒' : d.kind === 'transcript' ? '📼 筆錄調閱' : '⏰ 代辦'}：${d.action || d.eventType || ''}`,
+        progress: d.progress ?? 25, ref: d, kind: 'deadline', caseRef: resolveCaseRef(d.caseId, caseNumberDisplay),
+      };
+    });
     return [...hearingItems, ...deadlineItems].filter((i) => i.date).sort((a, b) => a.date.localeCompare(b.date));
   }
 
@@ -908,8 +1150,21 @@
         <td class="px-3 py-2 font-mono text-xs">${esc(i.caseNumberDisplay) || '—'}</td>
         <td class="px-3 py-2 text-xs">${esc(i.division)}</td>
         <td class="px-3 py-2">${esc(i.person)}${i.opponent && i.opponent !== '—' ? `<span class="text-slate-400"> / ${esc(i.opponent)}</span>` : ''}</td>
-        <td class="px-3 py-2 text-slate-500">${esc(calendarLabelFor(i.attorney)) || '—'}</td>
-        <td class="px-3 py-2">${esc(i.itemLabel)}</td>
+        <td class="px-3 py-2 text-slate-500">${esc(i.attorney) || '—'}</td>
+        <td class="px-3 py-2">
+          ${i.caseRef ? `
+          <div class="flex items-center gap-1">
+            <input type="date" data-case-id="${esc(i.caseRef.id)}" class="todo-received-date text-[11px] border rounded px-1 py-0.5 w-[108px]" value="${esc(i.caseRef.lastReceivedDate) || ''}" />
+            <select data-case-id="${esc(i.caseRef.id)}" class="todo-received-type text-[11px] border rounded px-1 py-0.5">
+              <option value="">（類型）</option>
+              ${RECEIVED_DOC_TYPES.map((t) => `<option value="${esc(t)}" ${i.caseRef.lastReceivedType === t ? 'selected' : ''}>${esc(t)}</option>`).join('')}
+            </select>
+          </div>` : '<span class="text-slate-300 text-xs">—</span>'}
+        </td>
+        <td class="px-3 py-2">
+          <div>${esc(i.itemLabel)}</div>
+          ${i.kind === 'hearing' ? googleCalendarLinkHTML(i.ref) : ''}
+        </td>
         <td class="px-3 py-2">
           <div class="w-28 h-2 rounded-full bg-slate-100 overflow-hidden"><div class="h-full ${progressColor(i.progress)}" style="width:${i.progress}%"></div></div>
         </td>
@@ -919,12 +1174,24 @@
           </select>
         </td>
       </tr>`;
-    }).join('') || `<tr><td class="px-3 py-4 text-center text-slate-400" colspan="8">尚無待辦事項</td></tr>`;
+    }).join('') || `<tr><td class="px-3 py-4 text-center text-slate-400" colspan="9">尚無代辦事項</td></tr>`;
 
     document.querySelectorAll('.todo-progress-select').forEach((sel) => {
       sel.addEventListener('change', (e) => {
         const item = items.find((i) => i.id === e.target.dataset.itemId);
         if (item) { item.ref.progress = Number(e.target.value); persistAll(); renderTodoBoard(); }
+      });
+    });
+    document.querySelectorAll('.todo-received-date').forEach((inp) => {
+      inp.addEventListener('change', (e) => {
+        const c = cases.find((x) => x.id === e.target.dataset.caseId);
+        if (c) { c.lastReceivedDate = e.target.value; persistAll(); renderTodoBoard(); }
+      });
+    });
+    document.querySelectorAll('.todo-received-type').forEach((sel) => {
+      sel.addEventListener('change', (e) => {
+        const c = cases.find((x) => x.id === e.target.dataset.caseId);
+        if (c) { c.lastReceivedType = e.target.value; persistAll(); renderTodoBoard(); }
       });
     });
 
@@ -939,15 +1206,42 @@
           const remainLabel = remain < 0 ? `已逾期 ${-remain} 天` : remain === 0 ? '今天到期' : `剩 ${remain} 天`;
           return `<div class="flex items-center justify-between border border-red-100 bg-red-50 rounded px-3 py-2">
             <div><span class="text-red-700 font-bold">${esc(remainLabel)}</span> · ${esc(isoToROC(i.date))} · ${esc(i.itemLabel)}（${esc(i.person)}${i.caseNumberDisplay ? ' · ' + esc(i.caseNumberDisplay) : ''}）</div>
-            <span class="text-xs text-slate-400">${esc(calendarLabelFor(i.attorney)) || '—'}</span>
+            <span class="text-xs text-slate-400">${esc(i.attorney) || '—'}</span>
           </div>`;
         }).join('')
       : '<div class="text-slate-400">目前沒有 3 天內到期的事項 🎉</div>';
   }
 
-  document.getElementById('btn-sync-gcal').addEventListener('click', () => {
-    alert('模擬功能：正式版將串接 Google Calendar API，需事務所提供 Google Workspace 管理員授權後才能實際同步。');
-  });
+  // ---- 2026-07-13 會議新增：加入 Google 日曆（因為是純前端靜態網站，沒有後端可做真正的
+  // API 自動雙向同步；改用 Google 官方支援的「新增活動」網址格式，讓使用者一鍵開新分頁存到
+  // 自己的 Google 日曆——這是真的會動的功能，不是模擬按鈕） ----
+  function pad2(n) { return String(n).padStart(2, '0'); }
+  function buildGoogleCalendarUrl({ title, dateISO, timeHHMM, allDay, details, location }) {
+    if (!dateISO) return '';
+    const [y, m, d] = dateISO.split('-').map(Number);
+    let datesParam;
+    if (allDay || !timeHHMM) {
+      const start = `${y}${pad2(m)}${pad2(d)}`;
+      const end = new Date(y, m - 1, d + 1);
+      datesParam = `${start}/${end.getFullYear()}${pad2(end.getMonth() + 1)}${pad2(end.getDate())}`;
+    } else {
+      const [hh, mm] = timeHHMM.split(':').map(Number);
+      const startStr = `${y}${pad2(m)}${pad2(d)}T${pad2(hh)}${pad2(mm)}00`;
+      const end = new Date(y, m - 1, d, hh + 1, mm);
+      const endStr = `${end.getFullYear()}${pad2(end.getMonth() + 1)}${pad2(end.getDate())}T${pad2(end.getHours())}${pad2(end.getMinutes())}00`;
+      datesParam = `${startStr}/${endStr}`;
+    }
+    const params = new URLSearchParams({ action: 'TEMPLATE', text: title || '', dates: datesParam, details: details || '', location: location || '', ctz: 'Asia/Taipei' });
+    return `https://calendar.google.com/calendar/render?${params.toString()}`;
+  }
+  function googleCalendarLinkHTML(h) {
+    const url = buildGoogleCalendarUrl({
+      title: h.title, dateISO: h.date, timeHHMM: h.time, allDay: h.allDay,
+      details: `當事人：${h.person || ''}${h.opponent && h.opponent !== '—' ? '／對造：' + h.opponent : ''}${h.cause ? '／案由：' + h.cause : ''}${h.caseNumberDisplay ? '／案號：' + h.caseNumberDisplay : ''}`,
+      location: h.courtNameRaw || h.courtAbbrev || '',
+    });
+    return url ? `<a href="${esc(url)}" target="_blank" rel="noopener" class="text-[11px] text-indigo-600 hover:underline whitespace-nowrap">+ 加入 Google 日曆</a>` : '';
+  }
 
   function caseOptionsHTML(selected) {
     return `<option value="">不關聯案件…</option>` + cases.map((c) => `<option value="${esc(c.id)}" ${selected === c.id ? 'selected' : ''}>${esc(c.caseNumber)}${c.title ? ' · ' + esc(c.title) : ''}</option>`).join('');
@@ -960,7 +1254,12 @@
         <p class="text-xs text-slate-400">機關全名輸入後會自動嘗試簡稱（地院/地檢/高分院），判斷不對可在簡稱欄位覆寫。</p>
         <div class="grid grid-cols-2 gap-3">
           <label class="text-xs text-slate-500 space-y-1"><span>案件（可留空）</span><select name="caseId" class="w-full text-sm border rounded px-2 py-1.5">${caseOptionsHTML('')}</select></label>
-          <label class="text-xs text-slate-500 space-y-1"><span>承辦律師</span><select name="attorney" class="w-full text-sm border rounded px-2 py-1.5">${ATTORNEYS.map((a) => `<option value="${esc(a.fullName)}">${esc(a.fullName)}</option>`).join('')}</select></label>
+          <div class="text-xs text-slate-500 space-y-1">
+            <span>承辦律師（可複選）</span>
+            <div class="flex flex-wrap gap-x-3 gap-y-1 border rounded px-2 py-1.5">
+              ${ATTORNEYS.map((a) => `<label class="flex items-center gap-1 text-sm text-slate-700"><input type="checkbox" name="attorneys" value="${esc(a.fullName)}" />${esc(a.fullName)}</label>`).join('')}
+            </div>
+          </div>
           <label class="text-xs text-slate-500 space-y-1"><span>開庭日期</span><input required type="date" name="date" class="w-full text-sm border rounded px-2 py-1.5" /></label>
           <label class="text-xs text-slate-500 space-y-1"><span>開庭時間（留空 = 整日）</span><input type="time" name="time" class="w-full text-sm border rounded px-2 py-1.5" /></label>
           <label class="text-xs text-slate-500 space-y-1"><span>法院 / 機關全名</span><input name="courtNameRaw" placeholder="臺灣臺北地方法院民事庭" class="w-full text-sm border rounded px-2 py-1.5" /></label>
@@ -977,66 +1276,90 @@
     const form = document.getElementById('form-hearing');
     function preview() {
       const fd = new FormData(form);
+      const attorneys = fd.getAll('attorneys');
       const courtAbbrev = fd.get('courtAbbrevOverride') || abbreviateCourtName(fd.get('courtNameRaw'));
       const caseNumberDisplay = combineCaseNumberDivision(fd.get('caseNumberRaw'), fd.get('divisionRaw'));
-      const label = calendarLabelFor(fd.get('attorney'));
+      const label = attorneys.map((a) => calendarLabelFor(a)).join('/');
       const parts = [label, courtAbbrev, fd.get('person'), fd.get('cause'), caseNumberDisplay].filter(Boolean);
       const body = parts.join('-');
       const title = fd.get('time') ? `${fd.get('time')} ${body}` : body;
       document.getElementById('hearing-title-preview').textContent = title || '（請填寫欄位）';
-      return { courtAbbrev, caseNumberDisplay, title };
+      return { attorneys, courtAbbrev, caseNumberDisplay, title };
     }
     form.addEventListener('input', preview);
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       const fd = new FormData(form);
-      if (!fd.get('date') || !fd.get('attorney') || !String(fd.get('person')).trim()) return;
+      const attorneys = fd.getAll('attorneys');
+      if (!fd.get('date') || !attorneys.length || !String(fd.get('person')).trim()) return;
       const { courtAbbrev, caseNumberDisplay, title } = preview();
+      const hearingId = 'h' + Date.now();
       hearings.push({
-        id: 'h' + Date.now(), caseId: fd.get('caseId') || null, date: fd.get('date'), time: fd.get('time') || '',
-        allDay: !fd.get('time'), attorney: fd.get('attorney'), courtNameRaw: fd.get('courtNameRaw'), courtAbbrev,
+        id: hearingId, caseId: fd.get('caseId') || null, date: fd.get('date'), time: fd.get('time') || '',
+        allDay: !fd.get('time'), attorneys, courtNameRaw: fd.get('courtNameRaw'), courtAbbrev,
         person: fd.get('person'), opponent: fd.get('opponent') || '', cause: fd.get('cause'), caseNumberDisplay,
-        division: fd.get('divisionRaw') || '', progress: 25, title,
+        division: fd.get('divisionRaw') || '', progress: 25, title, transcriptChecked: false,
+      });
+      // 2026-07-13 會議新增：開庭後一週自動產生「筆錄調閱確認」代辦，出現在代辦與進度總表
+      deadlines.push({
+        id: 'tr' + Date.now(), kind: 'transcript', caseId: fd.get('caseId') || null, person: fd.get('person'), opponent: fd.get('opponent') || '',
+        eventType: '筆錄調閱確認', action: '筆錄調閱確認', computedDeadline: addDaysISO(fd.get('date'), 7),
+        caseNumberDisplay, displayTitle: `筆錄調閱確認-${fd.get('person')}${caseNumberDisplay ? '-' + caseNumberDisplay : ''}`,
+        division: fd.get('divisionRaw') || '', attorney: attorneys.join('、'), progress: 0, linkedHearingId: hearingId,
       });
       persistAll(); form.reset(); document.getElementById('hearing-title-preview').textContent = '（請填寫欄位）';
       renderCasesPageDynamic();
     });
   }
 
-  function renderActionDeadlineForm() {
-    document.getElementById('form-action-deadline-wrap').innerHTML = `
-      <form id="form-action-deadline" class="bg-white rounded-lg border border-slate-200 p-5 space-y-3">
-        <h3 class="font-semibold text-slate-800">新增末日提醒（公文限期 / 教示條款）</h3>
-        <p class="text-xs text-slate-400">依「收文隔日起算」計算末日，遇非工作日自動順延至前一個工作日，並自動加開一筆提前提醒。</p>
+  // 2026-07-13 會議新增：期限提醒與末日提醒合併成一個表單。沿用末日提醒的完整引擎（假日順延＋
+  // 自動提前提醒），並在期限規則加「其他」選項讓天數可手動輸入；選規則時天數自動帶入、仍可覆寫。
+  function renderDeadlineForm() {
+    document.getElementById('form-deadline-wrap').innerHTML = `
+      <form id="form-deadline" class="bg-white rounded-lg border border-slate-200 p-5 space-y-3">
+        <h3 class="font-semibold text-slate-800">新增期限提醒（末日提醒，已整合原本的一般期限提醒）</h3>
+        <p class="text-xs text-slate-400">依「收文隔日起算」計算末日，遇非工作日自動順延至前一個工作日，並依提前提醒天數表自動加開一筆提前提醒。選「期限規則」會自動帶入天數（仍可手動覆寫），選「其他」則自行輸入天數。</p>
         <div class="grid grid-cols-2 gap-3">
           <label class="text-xs text-slate-500 space-y-1"><span>案件（可留空）</span><select name="caseId" class="w-full text-sm border rounded px-2 py-1.5">${caseOptionsHTML('')}</select></label>
           <label class="text-xs text-slate-500 space-y-1"><span>負責律師</span><select name="attorney" class="w-full text-sm border rounded px-2 py-1.5">${ATTORNEYS.map((a) => `<option value="${esc(a.fullName)}">${esc(a.fullName)}</option>`).join('')}</select></label>
           <label class="text-xs text-slate-500 space-y-1"><span>當事人</span><input required name="person" placeholder="王小明" class="w-full text-sm border rounded px-2 py-1.5" /></label>
           <label class="text-xs text-slate-500 space-y-1"><span>對造（選填）</span><input name="opponent" placeholder="例：陳大明" class="w-full text-sm border rounded px-2 py-1.5" /></label>
-          <label class="text-xs text-slate-500 space-y-1"><span>動作 / 救濟行為</span><input required name="action" placeholder="例：補繳裁判費" class="w-full text-sm border rounded px-2 py-1.5" /></label>
-          <label class="text-xs text-slate-500 space-y-1"><span>收文日期</span><input required type="date" name="triggerDate" class="w-full text-sm border rounded px-2 py-1.5" /></label>
-          <label class="text-xs text-slate-500 space-y-1"><span>限期天數</span><input required type="number" min="0" name="periodDays" placeholder="例：5" class="w-full text-sm border rounded px-2 py-1.5" /></label>
+          <label class="text-xs text-slate-500 space-y-1 col-span-2"><span>期限規則</span>
+            <select name="ruleId" class="w-full text-sm border rounded px-2 py-1.5">${DEADLINE_RULES_WITH_OTHER.map((r) => `<option value="${r.id}" data-days="${r.days ?? ''}">${esc(r.label)}${r.days != null ? `（${r.days}日）` : ''}</option>`).join('')}</select>
+          </label>
+          <label class="text-xs text-slate-500 space-y-1"><span>動作 / 救濟行為（選填，會用在標題；留空則用期限規則名稱）</span><input name="action" placeholder="例：補繳裁判費 / 上訴" class="w-full text-sm border rounded px-2 py-1.5" /></label>
+          <label class="text-xs text-slate-500 space-y-1"><span>收文 / 送達日期</span><input required type="date" name="triggerDate" class="w-full text-sm border rounded px-2 py-1.5" /></label>
+          <label class="text-xs text-slate-500 space-y-1"><span>限期天數（依規則自動帶入，可手動覆寫）</span><input required type="number" min="0" name="periodDays" placeholder="例：5" class="w-full text-sm border rounded px-2 py-1.5" /></label>
           <label class="text-xs text-slate-500 space-y-1"><span>案號（選填）</span><input name="caseNumberRaw" placeholder="115訴1" class="w-full text-sm border rounded px-2 py-1.5" /></label>
           <label class="text-xs text-slate-500 space-y-1"><span>股別（選填）</span><input name="divisionRaw" placeholder="玄股" class="w-full text-sm border rounded px-2 py-1.5" /></label>
           <label class="text-xs text-slate-500 space-y-1"><span>提前提醒天數（留空 = 自動）</span><input type="number" min="0" name="advanceOverride" class="w-full text-sm border rounded px-2 py-1.5" /></label>
         </div>
         <div class="text-xs bg-emerald-50 border border-emerald-200 rounded p-3 text-emerald-900">✓ 提前提醒天數表已於 2026-07-08 由事務所確認：14~20日限期採分級表版本（提前5日），原始範例文字「提前20日」認定為誤植，不採用。表單中仍可手動覆寫個案的提前天數。</div>
         <div class="text-xs bg-amber-50 border border-amber-200 rounded p-3 text-amber-900">⚠️ 國定假日表已填入 2026 年（36天，來源：行政院人事總處115年辦公日曆表），但 2026 以外年度仍是空白，跨年度使用前務必請事務所補上當年度假日。</div>
-        <div id="action-deadline-preview" class="text-sm bg-slate-50 border border-slate-200 rounded p-3 space-y-1 hidden"></div>
+        <div id="deadline-preview" class="text-sm bg-slate-50 border border-slate-200 rounded p-3 space-y-1 hidden"></div>
         <button class="text-sm px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700">儲存為草稿（末日 + 提醒各一筆）</button>
       </form>`;
-    const form = document.getElementById('form-action-deadline');
+    const form = document.getElementById('form-deadline');
+    const ruleSel = form.querySelector('[name=ruleId]');
+    const periodDaysInput = form.querySelector('[name=periodDays]');
+    ruleSel.addEventListener('change', () => {
+      const days = ruleSel.selectedOptions[0]?.dataset.days;
+      if (days !== '' && days != null) periodDaysInput.value = days;
+      preview();
+    });
     function preview() {
       const fd = new FormData(form);
       const triggerDate = fd.get('triggerDate'), periodDays = Number(fd.get('periodDays'));
-      const box = document.getElementById('action-deadline-preview');
+      const box = document.getElementById('deadline-preview');
       if (!triggerDate || !fd.get('periodDays') || !(periodDays >= 0)) { box.classList.add('hidden'); return null; }
       const caseNumberDisplay = combineCaseNumberDivision(fd.get('caseNumberRaw'), fd.get('divisionRaw'));
       const { naiveDeadline, finalDeadline, rolledForward } = computeActionDeadline(triggerDate, periodDays);
       const autoAdvanceDays = getAdvanceReminderDays(periodDays);
       const advanceOverride = fd.get('advanceOverride');
       const advanceDays = advanceOverride !== '' && advanceOverride != null ? Number(advanceOverride) : autoAdvanceDays;
-      const mainTitle = buildDeadlineTitle({ person: fd.get('person'), action: fd.get('action'), caseNumberDisplay });
+      const rule = DEADLINE_RULES_WITH_OTHER.find((r) => r.id === fd.get('ruleId'));
+      const actionLabel = fd.get('action') || rule?.eventType || '期限';
+      const mainTitle = buildDeadlineTitle({ person: fd.get('person'), action: actionLabel, caseNumberDisplay });
       let reminder = null;
       if (advanceDays > 0) {
         const reminderDate = addDaysISO(finalDeadline, -advanceDays);
@@ -1047,72 +1370,44 @@
         <div>試算末日：<span class="font-semibold text-slate-800">${esc(finalDeadline)}</span>${rolledForward ? `<span class="text-xs text-amber-600 ml-2">（原始 ${esc(naiveDeadline)} 為非工作日，已順延）</span>` : ''}</div>
         <div class="text-slate-700">末日行事曆標題：「${esc(mainTitle)}」</div>
         ${reminder ? `<div class="text-slate-700">提前提醒：${esc(reminder.reminderDate)}（提前 ${advanceDays} 天）「${esc(reminder.reminderTitle)}」</div>` : '<div class="text-slate-400">此限期天數無需提前提醒</div>'}`;
-      return { caseNumberDisplay, finalDeadline, naiveDeadline, rolledForward, mainTitle, reminder, advanceDays };
+      return { caseNumberDisplay, finalDeadline, naiveDeadline, rolledForward, mainTitle, actionLabel, reminder, advanceDays };
     }
     form.addEventListener('input', preview);
+    form.addEventListener('change', preview);
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       const fd = new FormData(form);
-      if (!fd.get('triggerDate') || !fd.get('periodDays') || !String(fd.get('person')).trim() || !String(fd.get('action')).trim()) return;
+      if (!fd.get('triggerDate') || !fd.get('periodDays') || !String(fd.get('person')).trim()) return;
       const p = preview(); if (!p) return;
       const mainId = 'd' + Date.now();
       const divisionRaw = fd.get('divisionRaw') || '';
       const opponent = fd.get('opponent') || '';
       const attorney = fd.get('attorney') || '';
       deadlines.push({
-        id: mainId, kind: 'main', caseId: fd.get('caseId') || null, person: fd.get('person'), opponent, action: fd.get('action'), eventType: fd.get('action'),
+        id: mainId, kind: 'main', caseId: fd.get('caseId') || null, person: fd.get('person'), opponent, action: p.actionLabel, eventType: p.actionLabel,
         triggerDate: fd.get('triggerDate'), periodDays: Number(fd.get('periodDays')), naiveDeadline: p.naiveDeadline, computedDeadline: p.finalDeadline,
         rolledForward: p.rolledForward, caseNumberDisplay: p.caseNumberDisplay, displayTitle: p.mainTitle,
         division: divisionRaw, attorney, progress: 25,
       });
       if (p.reminder) {
         deadlines.push({
-          id: 'd' + (Date.now() + 1), kind: 'reminder', caseId: fd.get('caseId') || null, person: fd.get('person'), opponent, eventType: `提醒：${fd.get('action')}`,
+          id: 'd' + (Date.now() + 1), kind: 'reminder', caseId: fd.get('caseId') || null, person: fd.get('person'), opponent, eventType: `提醒：${p.actionLabel}`,
           computedDeadline: p.reminder.reminderDate, advanceDays: p.advanceDays, linkedDeadlineId: mainId, caseNumberDisplay: p.caseNumberDisplay, displayTitle: p.reminder.reminderTitle,
           division: divisionRaw, attorney, progress: 25,
         });
       }
-      persistAll(); form.reset(); document.getElementById('action-deadline-preview').classList.add('hidden');
+      persistAll(); form.reset(); document.getElementById('deadline-preview').classList.add('hidden');
       renderCasesPageDynamic();
-    });
-  }
-
-  function renderGeneralDeadlineForm() {
-    document.getElementById('form-general-deadline-wrap').innerHTML = `
-      <form id="form-general-deadline" class="bg-white rounded-lg border border-slate-200 p-5 space-y-3">
-        <h3 class="font-semibold text-slate-800">新增期限提醒（一般，沿用既有規則表，未套用假日順延）</h3>
-        <div class="grid grid-cols-2 gap-3">
-          <label class="text-xs text-slate-500 space-y-1"><span>案件（可留空）</span><select name="caseId" class="w-full text-sm border rounded px-2 py-1.5">${caseOptionsHTML('')}</select></label>
-          <label class="text-xs text-slate-500 space-y-1"><span>當事人</span><input required name="person" class="w-full text-sm border rounded px-2 py-1.5" /></label>
-          <label class="text-xs text-slate-500 space-y-1 col-span-2"><span>期限規則</span>
-            <select name="ruleId" class="w-full text-sm border rounded px-2 py-1.5">${DEADLINE_RULES.map((r) => `<option value="${r.id}">${esc(r.label)}（${r.days}日）</option>`).join('')}</select>
-          </label>
-          <label class="text-xs text-slate-500 space-y-1"><span>觸發日期（送達/收到日）</span><input required type="date" name="triggerDate" class="w-full text-sm border rounded px-2 py-1.5" /></label>
-        </div>
-        <button class="text-sm px-4 py-2 rounded bg-slate-700 text-white hover:bg-slate-800">儲存期限提醒</button>
-      </form>`;
-    const form = document.getElementById('form-general-deadline');
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const fd = new FormData(form);
-      if (!fd.get('triggerDate') || !String(fd.get('person')).trim()) return;
-      const rule = DEADLINE_RULES.find((r) => r.id === fd.get('ruleId'));
-      const computedDeadline = computeDeadlineDate(fd.get('triggerDate'), rule.days);
-      const c = cases.find((x) => x.id === fd.get('caseId'));
-      const caseNumberDisplay = c ? c.caseNumber : '';
-      deadlines.push({
-        id: 'd' + Date.now(), kind: 'general', caseId: fd.get('caseId') || null, person: fd.get('person'), eventType: rule.eventType,
-        triggerDate: fd.get('triggerDate'), periodDays: rule.days, computedDeadline, caseNumberDisplay,
-        displayTitle: `${fd.get('person')}${rule.eventType}期限${caseNumberDisplay ? '-' + caseNumberDisplay : ''}`,
-      });
-      persistAll(); form.reset(); renderCasesPageDynamic();
     });
   }
 
   function renderHearingAndDeadlineLists() {
     document.getElementById('hearing-list').innerHTML = [...hearings].sort((a, b) => a.date.localeCompare(b.date)).map((h) => `
       <div class="border border-slate-100 rounded p-2">
-        <div class="font-mono text-xs text-slate-400">${esc(h.date)}${h.allDay ? '（整日）' : ''}</div>
+        <div class="flex items-center justify-between gap-2">
+          <div class="font-mono text-xs text-slate-400">${esc(h.date)}${h.allDay ? '（整日）' : ''}</div>
+          ${googleCalendarLinkHTML(h)}
+        </div>
         <div>${esc(h.title)}</div>
       </div>`).join('') || '<div class="text-slate-400">尚無開庭紀錄</div>';
 
@@ -1158,7 +1453,12 @@
     e.preventDefault();
     const fd = new FormData(e.target);
     if (!fd.get('caseNumber') || !fd.get('title')) return;
-    cases.push({ id: 'c' + Date.now(), caseNumber: fd.get('caseNumber'), title: fd.get('title'), attorney: fd.get('attorney'), status: CASE_STATUSES[0] });
+    cases.push({
+      id: 'c' + Date.now(), caseNumber: fd.get('caseNumber'), title: fd.get('title'), attorney: fd.get('attorney'), status: CASE_STAGES[0],
+      opponentName: fd.get('opponentName') || '', opponentAttorney: fd.get('opponentAttorney') || '', opponentContact: fd.get('opponentContact') || '',
+      contractStatus: fd.get('contractStatus') || CONTRACT_STATUSES[0], feeStatus: fd.get('feeStatus') || FEE_STATUSES[0], mediationOngoing: fd.get('mediationOngoing') === 'on',
+      receivable: Number(fd.get('receivable')) || 0, lastReceivedDate: '', lastReceivedType: '',
+    });
     persistAll(); e.target.reset(); renderCasesPageDynamic();
   });
 
@@ -1283,15 +1583,232 @@
   // ==========================================================================
   // CRM
   // ==========================================================================
-  function renderClients() {
-    document.getElementById('clients-table-body').innerHTML = clients.map((c) => `
-      <tr class="hover:bg-slate-50"><td class="px-5 py-3">${esc(c.name)}</td><td class="px-5 py-3">${esc(c.phone) || '—'}</td><td class="px-5 py-3">${esc(c.email) || '—'}</td><td class="px-5 py-3 text-slate-500">${esc(c.note) || '—'}</td></tr>
-    `).join('') || '<tr><td class="px-5 py-4 text-slate-400" colspan="4">尚無客戶資料</td></tr>';
+  // 2026-07-13 新增：客戶清單每欄位可反覆編輯（點「編輯」進入該列的輸入框，「儲存」寫回、「取消」還原）
+  let editingClientId = null;
+  // 2026-07-13 會議新增：客戶資料的「案件對照欄位」— 自動用姓名比對現有案件+已結案紀錄，不用手動輸入
+  let expandedClientId = null;
+  function renderClientCaseMatchHTML(client) {
+    const { open, closedList } = getClientCaseMatches(client);
+    const total = open.length + closedList.length;
+    if (!total) return '<div class="text-slate-400">查無同姓名的案件紀錄（案件與已結案表都以姓名比對，若當事人姓名有誤植可能對不上）</div>';
+    return `
+      ${open.length ? `<div class="mb-2"><div class="text-[11px] font-semibold text-slate-500 mb-1">進行中案件（${open.length}）</div>${open.map((c) => `
+        <div class="flex items-center gap-2 text-xs mb-0.5"><span class="font-mono text-slate-500">${esc(c.caseNumber)}</span><span>${esc(c.title)}</span><span class="px-1.5 py-0.5 rounded-full ${CASE_STAGE_BADGE[c.status] || 'bg-slate-100 text-slate-600'}">${esc(c.status)}</span></div>`).join('')}</div>` : ''}
+      ${closedList.length ? `<div><div class="text-[11px] font-semibold text-slate-500 mb-1">已結案紀錄（${closedList.length}）</div>${closedList.map((c) => `
+        <div class="flex items-center gap-2 text-xs mb-0.5"><span class="font-mono text-slate-500">${esc((c.caseNumbers || []).join('、') || c.caseNumberRaw || '—')}</span><span>${esc(c.cause) || '—'}</span><span class="text-slate-400">${esc(c.closedDateISO || c.closedDateRaw || '')}</span></div>`).join('')}</div>` : ''}`;
   }
+  function renderClients() {
+    document.getElementById('clients-table-body').innerHTML = clients.map((c) => {
+      const { open, closedList } = getClientCaseMatches(c);
+      const caseCount = open.length + closedList.length;
+      const detailRow = expandedClientId === c.id
+        ? `<tr class="bg-slate-50/70"><td colspan="6" class="px-5 py-3 border-t border-slate-100">${renderClientCaseMatchHTML(c)}</td></tr>`
+        : '';
+      if (c.id === editingClientId) {
+        return `
+      <tr class="bg-indigo-50/40" data-client-id="${esc(c.id)}">
+        <td class="px-5 py-2"><input class="client-edit-field w-full text-sm border rounded px-1.5 py-1" data-field="name" value="${esc(c.name)}" /></td>
+        <td class="px-5 py-2"><input class="client-edit-field w-full text-sm border rounded px-1.5 py-1" data-field="phone" value="${esc(c.phone) || ''}" /></td>
+        <td class="px-5 py-2"><input class="client-edit-field w-full text-sm border rounded px-1.5 py-1" data-field="email" value="${esc(c.email) || ''}" /></td>
+        <td class="px-5 py-2"><input class="client-edit-field w-full text-sm border rounded px-1.5 py-1" data-field="idNumber" value="${esc(c.idNumber) || ''}" /></td>
+        <td class="px-5 py-2"><input class="client-edit-field w-full text-sm border rounded px-1.5 py-1" data-field="address" value="${esc(c.address) || ''}" /></td>
+        <td class="px-5 py-2">
+          <div class="flex items-center gap-1.5">
+            <input class="client-edit-field flex-1 text-sm border rounded px-1.5 py-1" data-field="note" value="${esc(c.note) || ''}" />
+            <button type="button" class="btn-client-save text-xs px-2 py-1 rounded bg-indigo-600 text-white whitespace-nowrap" data-client-id="${esc(c.id)}">儲存</button>
+            <button type="button" class="btn-client-cancel text-xs px-2 py-1 rounded border border-slate-300 text-slate-500 whitespace-nowrap">取消</button>
+          </div>
+        </td>
+      </tr>${detailRow}`;
+      }
+      return `
+      <tr class="hover:bg-slate-50">
+        <td class="px-5 py-3">${esc(c.name)}</td><td class="px-5 py-3">${esc(c.phone) || '—'}</td><td class="px-5 py-3">${esc(c.email) || '—'}</td><td class="px-5 py-3">${esc(c.idNumber) || '—'}</td><td class="px-5 py-3">${esc(c.address) || '—'}</td>
+        <td class="px-5 py-3 text-slate-500">
+          <div class="flex items-center justify-between gap-2">
+            <span>${esc(c.note) || '—'}</span>
+            <div class="flex items-center gap-1.5 flex-shrink-0">
+              <button type="button" class="btn-client-toggle-cases text-xs px-2 py-1 rounded border border-slate-300 text-slate-500 hover:bg-slate-50 whitespace-nowrap" data-client-id="${esc(c.id)}">${expandedClientId === c.id ? '收起' : `案件對照 (${caseCount})`}</button>
+              <button type="button" class="btn-client-edit text-xs px-2 py-1 rounded border border-slate-300 text-slate-500 hover:bg-slate-50 whitespace-nowrap" data-client-id="${esc(c.id)}">編輯</button>
+            </div>
+          </div>
+        </td>
+      </tr>${detailRow}`;
+    }).join('') || '<tr><td class="px-5 py-4 text-slate-400" colspan="6">尚無客戶資料</td></tr>';
+
+    document.querySelectorAll('.btn-client-toggle-cases').forEach((btn) => {
+      btn.addEventListener('click', () => { expandedClientId = expandedClientId === btn.dataset.clientId ? null : btn.dataset.clientId; renderClients(); });
+    });
+    document.querySelectorAll('.btn-client-edit').forEach((btn) => {
+      btn.addEventListener('click', () => { editingClientId = btn.dataset.clientId; renderClients(); });
+    });
+    document.querySelectorAll('.btn-client-cancel').forEach((btn) => {
+      btn.addEventListener('click', () => { editingClientId = null; renderClients(); });
+    });
+    document.querySelectorAll('.btn-client-save').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const row = btn.closest('tr');
+        const c = clients.find((x) => x.id === btn.dataset.clientId);
+        if (!c) return;
+        const nameInput = row.querySelector('[data-field=name]');
+        if (!nameInput.value.trim()) return; // 姓名為必填，空白時不儲存
+        row.querySelectorAll('.client-edit-field').forEach((input) => { c[input.dataset.field] = input.value; });
+        editingClientId = null;
+        persistAll(); renderClients();
+      });
+    });
+  }
+
+  // ---- 2026-07-10 會議新增：客戶搜尋引擎（同時查客戶資料、現有案件、已結案紀錄） ----
+  const CRM_RESULT_LIMIT = 20;
+  function renderCrmSearch(query) {
+    const box = document.getElementById('crm-search-results');
+    const q = (query || '').trim();
+    if (!q) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+
+    const matchedClients = clients.filter((c) => (c.name || '').includes(q));
+    const matchedCases = cases.filter((c) => (c.title || '').includes(q) || (c.opponentName || '').includes(q));
+    const matchedClosed = closedCases.filter((c) => (c.person || '').includes(q));
+
+    box.classList.remove('hidden');
+    box.innerHTML = `
+      <div>
+        <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">客戶資料（${matchedClients.length} 筆）</div>
+        ${matchedClients.length ? matchedClients.map((c) => `
+          <div class="border border-slate-100 rounded px-3 py-2 mb-1.5 text-sm">
+            <span class="font-medium text-slate-800">${esc(c.name)}</span>
+            <span class="text-slate-400 ml-2">${esc(c.phone) || '—'} · ${esc(c.email) || '—'}</span>
+            ${c.note ? `<div class="text-xs text-slate-500 mt-0.5">${esc(c.note)}</div>` : ''}
+          </div>`).join('') : '<div class="text-sm text-slate-400">查無同名客戶資料，可能尚未建立 CRM 紀錄</div>'}
+      </div>
+      <div>
+        <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">現有案件（${matchedCases.length} 筆）</div>
+        ${matchedCases.length ? matchedCases.map((c) => `
+          <div class="border border-slate-100 rounded px-3 py-2 mb-1.5 text-sm flex items-center justify-between">
+            <div><span class="font-mono text-xs text-slate-400">${esc(c.caseNumber)}</span> <span class="ml-1">${esc(c.title)}</span></div>
+            <span class="text-xs px-2 py-0.5 rounded-full ${CASE_STAGE_BADGE[c.status] || 'bg-slate-100 text-slate-600'}">${esc(c.status)}</span>
+          </div>`).join('') : '<div class="text-sm text-slate-400">目前無相符的現有案件</div>'}
+      </div>
+      <div>
+        <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">已結案紀錄（${matchedClosed.length} 筆${matchedClosed.length > CRM_RESULT_LIMIT ? `，僅顯示前 ${CRM_RESULT_LIMIT} 筆` : ''}）</div>
+        ${matchedClosed.length ? matchedClosed.slice(0, CRM_RESULT_LIMIT).map((c) => `
+          <div class="border border-slate-100 rounded px-3 py-2 mb-1.5 text-sm">
+            <span class="font-mono text-xs text-slate-400">${esc(c.closedDateISO || c.closedDateRaw || '—')}</span>
+            <span class="ml-1">${esc(c.person)} ${esc(c.cause) || ''}</span>
+            <span class="text-slate-400 ml-1">${esc((c.caseNumbers || []).join('、'))}</span>
+          </div>`).join('') : '<div class="text-sm text-slate-400">目前無相符的已結案紀錄</div>'}
+        ${!closedCasesImported ? '<div class="text-xs text-amber-600 mt-1">⚠️ 歷史結案資料尚未匯入（請到「結案案件表」頁面匯入 129 筆歷史資料）</div>' : ''}
+      </div>`;
+  }
+  document.getElementById('crm-search').addEventListener('input', (e) => renderCrmSearch(e.target.value));
+
   document.getElementById('form-client').addEventListener('submit', (e) => {
     e.preventDefault(); const fd = new FormData(e.target); if (!String(fd.get('name')).trim()) return;
-    clients.push({ id: 'cl' + Date.now(), name: fd.get('name'), phone: fd.get('phone'), email: fd.get('email'), note: fd.get('note') });
+    clients.push({
+      id: 'cl' + Date.now(), name: fd.get('name'), phone: fd.get('phone'), email: fd.get('email'),
+      idNumber: fd.get('idNumber') || '', address: fd.get('address') || '', note: fd.get('note'),
+    });
     persistAll(); e.target.reset(); renderClients();
+  });
+
+  // 2026-07-13 會議新增：客戶資料匯出成 CSV（含身分證號/地址，屬敏感個資，下載後請妥善保管）
+  document.getElementById('btn-export-clients-csv').addEventListener('click', () => {
+    const header = ['姓名', '聯絡電話', 'Email', '身分證號', '地址', '備註'];
+    const csvLines = [header.join(',')].concat(clients.map((c) => [
+      c.name || '', c.phone || '', c.email || '', c.idNumber || '', c.address || '', c.note || '',
+    ].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')));
+    const blob = new Blob(['﻿' + csvLines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `客戶資料_${TODAY}.csv`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+  });
+
+  // ==========================================================================
+  // 新增接案（2026-07-10 會議新增：一站式表單，同時建立案件+客戶+檔名）
+  // ==========================================================================
+  function findExistingClientByName(name) {
+    const n = (name || '').trim();
+    if (!n) return null;
+    return clients.find((c) => (c.name || '').trim() === n) || null;
+  }
+
+  function renderIntakeForm() {
+    const attorneyGroup = document.getElementById('intake-attorney');
+    if (attorneyGroup) attorneyGroup.innerHTML = ATTORNEYS.map((a) => `<label class="flex items-center gap-1 text-sm text-slate-700"><input type="checkbox" name="attorneys" value="${esc(a.fullName)}" />${esc(a.fullName)}</label>`).join('');
+    const contractSel = document.getElementById('intake-contract-status');
+    if (contractSel) contractSel.innerHTML = CONTRACT_STATUSES.map((s) => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+    const feeSel = document.getElementById('intake-fee-status');
+    if (feeSel) feeSel.innerHTML = FEE_STATUSES.map((s) => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+  }
+
+  function intakePreview() {
+    const form = document.getElementById('form-new-intake');
+    const fd = new FormData(form);
+    const person = (fd.get('person') || '').trim();
+    const caseNumberDisplay = combineCaseNumberDivision(fd.get('caseNumberRaw'), fd.get('divisionRaw'));
+    const fileName = buildFileName({
+      rocDate: fd.get('contractDateRoc'), direction: '收文', serviceNote: '',
+      person: person || '', cause: '', docType: '委任狀', isTranscriptCopy: false, caseNumberDisplay,
+    });
+    const existingClient = findExistingClientByName(person);
+    const box = document.getElementById('intake-preview');
+    box.innerHTML = `
+      <div>客戶比對：${existingClient ? `<span class="text-emerald-700 font-medium">找到既有客戶「${esc(existingClient.name)}」，將附加資料到同一筆客戶</span>` : `<span class="text-slate-500">查無同名客戶，將建立新客戶</span>`}</div>
+      <div>委任狀建議檔名：<span class="font-medium text-slate-800">${esc(fileName) || '（請填寫欄位）'}</span></div>
+      <div>案件標題預覽：<span class="text-slate-700">${esc(person)}${fd.get('cause') ? ' ' + esc(fd.get('cause')) : ''}</span></div>`;
+    return { person, caseNumberDisplay, fileName, existingClient };
+  }
+  document.getElementById('form-new-intake').addEventListener('input', intakePreview);
+
+  document.getElementById('form-new-intake').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const fd = new FormData(form);
+    if (!String(fd.get('person')).trim() || !String(fd.get('cause')).trim()) return;
+    const { person, caseNumberDisplay, fileName, existingClient } = intakePreview();
+
+    // 1) 客戶：找到既有的就附加備註，否則新建
+    let client = existingClient;
+    if (client) {
+      if (fd.get('note')) client.note = client.note ? `${client.note}；${fd.get('note')}` : fd.get('note');
+      if (fd.get('phone') && !client.phone) client.phone = fd.get('phone');
+      if (fd.get('email') && !client.email) client.email = fd.get('email');
+    } else {
+      client = { id: 'cl' + Date.now(), name: person, phone: fd.get('phone') || '', email: fd.get('email') || '', note: fd.get('note') || '' };
+      clients.push(client);
+    }
+
+    // 2) 案件：新建，訴訟階段從「委任」開始
+    const attorneys = fd.getAll('attorneys');
+    const newCase = {
+      id: 'c' + Date.now(), caseNumber: fd.get('caseNumberRaw') ? caseNumberDisplay : '（尚未分案）',
+      title: `${person} ${fd.get('cause')}`.trim(), attorney: attorneys.join('、'), attorneys, status: CASE_STAGES[0],
+      opponentName: fd.get('opponentName') || '', opponentAttorney: fd.get('opponentAttorney') || '', opponentContact: fd.get('opponentContact') || '',
+      contractStatus: fd.get('contractStatus') || CONTRACT_STATUSES[0], feeStatus: fd.get('feeStatus') || FEE_STATUSES[0], mediationOngoing: false,
+      receivable: 0, lastReceivedDate: '', lastReceivedType: '',
+    };
+    cases.push(newCase);
+
+    // 3) 檔名：委任狀，自動加進卷宗清單（分類＝委任狀）
+    if (fileName) {
+      filesList.push({ id: 'f' + Date.now(), fileName: '（新掃描檔）', suggestedFileName: fileName, category: '委任狀' });
+    }
+
+    persistAll();
+    renderClients(); renderCasesPageDynamic(); renderFilesTable();
+
+    const resultBox = document.getElementById('intake-result');
+    resultBox.classList.remove('hidden');
+    resultBox.innerHTML = `
+      ✓ 已建立：
+      <div>案件「${esc(newCase.title)}」（${esc(newCase.caseNumber)}），訴訟階段：委任</div>
+      <div>客戶「${esc(client.name)}」${existingClient ? '（沿用既有客戶資料）' : '（新建客戶）'}</div>
+      ${fileName ? `<div>委任狀建議檔名：${esc(fileName)}（已加入「文件與檔名產生器」卷宗清單，分類：委任狀）</div>` : ''}`;
+
+    form.reset();
+    renderIntakeForm();
+    document.getElementById('intake-preview').innerHTML = '';
   });
 
   // ==========================================================================
@@ -1415,29 +1932,159 @@
     return rows;
   }
 
+  // 2026-07-13 新增：稅務歸屬總表比照 CRM 做法，逐欄可編輯（點「編輯」展開完整欄位表單）
+  let editingTaxCaseId = null;
+  function taxCaseEditFieldsHTML(t) {
+    const v = (x) => (x == null ? '' : x);
+    return `
+      <div class="grid grid-cols-4 gap-2">
+        <label class="text-[11px] text-slate-500 space-y-0.5"><span>案號</span><input class="tc-field w-full text-sm border rounded px-1.5 py-1" data-field="caseNumber" value="${esc(v(t.caseNumber))}" /></label>
+        <label class="text-[11px] text-slate-500 space-y-0.5"><span>當事人</span><input class="tc-field w-full text-sm border rounded px-1.5 py-1" data-field="person" value="${esc(v(t.person))}" /></label>
+        <label class="text-[11px] text-slate-500 space-y-0.5"><span>客戶類型</span>
+          <select class="tc-field w-full text-sm border rounded px-1.5 py-1" data-field="clientType">${CLIENT_TYPES.map((o) => `<option value="${esc(o)}" ${t.clientType === o ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>
+        </label>
+        <label class="text-[11px] text-slate-500 space-y-0.5"><span>案由</span><input class="tc-field w-full text-sm border rounded px-1.5 py-1" data-field="cause" value="${esc(v(t.cause))}" /></label>
+        <label class="text-[11px] text-slate-500 space-y-0.5"><span>所屬法院</span><input class="tc-field w-full text-sm border rounded px-1.5 py-1" data-field="court" placeholder="士林地方法院" value="${esc(v(t.court))}" /></label>
+        <label class="text-[11px] text-slate-500 space-y-0.5"><span>接案時間（民國年）</span><input class="tc-field w-full text-sm border rounded px-1.5 py-1" data-field="intakeDate" placeholder="115.01.10" value="${esc(v(t.intakeDate))}" /></label>
+        <label class="text-[11px] text-slate-500 space-y-0.5"><span>結案日期（民國年）</span><input class="tc-field w-full text-sm border rounded px-1.5 py-1" data-field="closedDate" placeholder="115.06.01" value="${esc(v(t.closedDate))}" /></label>
+        <label class="text-[11px] text-slate-500 space-y-0.5"><span>結案文件</span><input class="tc-field w-full text-sm border rounded px-1.5 py-1" data-field="closingDocument" value="${esc(v(t.closingDocument))}" /></label>
+        <label class="text-[11px] text-slate-500 flex items-center gap-1.5 self-end pb-1"><input type="checkbox" class="tc-field" data-field="invoiceIncludesTax" data-type="checkbox" ${t.invoiceIncludesTax ? 'checked' : ''} /><span>發票含稅</span></label>
+        <label class="text-[11px] text-slate-500 space-y-0.5"><span>簽約總額（發票金額，未稅）</span><input type="number" min="0" class="tc-field tc-contract-total w-full text-sm border rounded px-1.5 py-1" data-field="contractTotal" value="${Number(v(t.contractTotal)) || 0}" /></label>
+        <label class="text-[11px] text-slate-500 space-y-0.5"><span>已收期款</span><input type="number" min="0" class="tc-field w-full text-sm border rounded px-1.5 py-1" data-field="receivedInstallments" value="${Number(v(t.receivedInstallments)) || 0}" /></label>
+        <label class="text-[11px] text-slate-500 space-y-0.5"><span>未收尾款</span><input type="number" min="0" class="tc-field w-full text-sm border rounded px-1.5 py-1" data-field="unreceivedBalance" value="${Number(v(t.unreceivedBalance)) || 0}" /></label>
+        <label class="text-[11px] text-slate-500 space-y-0.5"><span>代墊費用</span><input type="number" min="0" class="tc-field w-full text-sm border rounded px-1.5 py-1" data-field="advancedExpenses" value="${Number(v(t.advancedExpenses)) || 0}" /></label>
+        <label class="text-[11px] text-slate-500 space-y-0.5">
+          <span>代扣稅額</span>
+          <div class="flex gap-1">
+            <input type="number" min="0" class="tc-field tc-withholding-tax w-full text-sm border rounded px-1.5 py-1" data-field="withholdingTax" value="${Number(v(t.withholdingTax)) || 0}" />
+            <button type="button" class="tc-calc-withholding text-[11px] px-1.5 rounded border border-indigo-300 text-indigo-700 whitespace-nowrap" title="簽約總額（未稅）× 10%，無免稅門檻">試算10%</button>
+          </div>
+        </label>
+        <label class="text-[11px] text-slate-500 space-y-0.5"><span>稅務實際歸屬</span>
+          <select class="tc-field w-full text-sm border rounded px-1.5 py-1" data-field="taxOwner">${TAX_OWNER_OPTIONS.map((o) => `<option value="${esc(o)}" ${t.taxOwner === o ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>
+        </label>
+      </div>`;
+  }
   function renderTaxCasesTable() {
     renderTaxTabs();
     const rows = taxCaseRows();
-    document.getElementById('tax-cases-table-body').innerHTML = rows.map((t) => `
+    document.getElementById('tax-cases-table-body').innerHTML = rows.map((t) => {
+      if (t.id === editingTaxCaseId) {
+        return `
+      <tr class="bg-indigo-50/40" data-tax-id="${esc(t.id)}">
+        <td class="px-4 py-3" colspan="10">
+          ${taxCaseEditFieldsHTML(t)}
+          <div class="flex items-center gap-2 mt-2">
+            <button type="button" class="btn-tc-save text-xs px-3 py-1.5 rounded bg-indigo-600 text-white" data-tax-id="${esc(t.id)}">儲存</button>
+            <button type="button" class="btn-tc-cancel text-xs px-3 py-1.5 rounded border border-slate-300 text-slate-500">取消</button>
+          </div>
+        </td>
+      </tr>`;
+      }
+      return `
       <tr class="hover:bg-slate-50" data-tax-id="${esc(t.id)}">
-        <td class="px-4 py-2.5 font-mono text-xs">${esc(t.caseNumber)}</td>
-        <td class="px-4 py-2.5">${esc(t.person)}</td>
-        <td class="px-4 py-2.5">NT$ ${Number(t.contractTotal).toLocaleString()}</td>
-        <td class="px-4 py-2.5 text-emerald-700">NT$ ${Number(t.receivedInstallments).toLocaleString()}</td>
-        <td class="px-4 py-2.5 text-amber-700">NT$ ${Number(t.unreceivedBalance).toLocaleString()}</td>
-        <td class="px-4 py-2.5">NT$ ${Number(t.advancedExpenses).toLocaleString()}</td>
+        <td class="px-4 py-2.5 font-mono text-xs whitespace-nowrap">${esc(t.caseNumber)}</td>
+        <td class="px-4 py-2.5 whitespace-nowrap">${esc(t.person)}</td>
+        <td class="px-4 py-2.5 whitespace-nowrap"><span class="text-[10px] px-1.5 py-0.5 rounded-full ${t.clientType === '企業客戶' ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-600'}">${esc(t.clientType) || '—'}</span></td>
+        <td class="px-4 py-2.5 whitespace-nowrap">NT$ ${Number(t.contractTotal).toLocaleString()}</td>
+        <td class="px-4 py-2.5 text-emerald-700 whitespace-nowrap">NT$ ${Number(t.receivedInstallments).toLocaleString()}</td>
+        <td class="px-4 py-2.5 text-amber-700 whitespace-nowrap">NT$ ${Number(t.unreceivedBalance).toLocaleString()}</td>
+        <td class="px-4 py-2.5 whitespace-nowrap">NT$ ${Number(t.advancedExpenses).toLocaleString()}</td>
+        <td class="px-4 py-2.5 whitespace-nowrap">NT$ ${Number(t.withholdingTax || 0).toLocaleString()}</td>
         <td class="px-4 py-2.5">
           <select data-tax-id="${esc(t.id)}" class="tax-owner-select text-xs border rounded px-1.5 py-1">
             ${TAX_OWNER_OPTIONS.map((o) => `<option value="${esc(o)}" ${t.taxOwner === o ? 'selected' : ''}>${esc(o)}</option>`).join('')}
           </select>
         </td>
-      </tr>`).join('') || `<tr><td class="px-4 py-4 text-center text-slate-400" colspan="7">此分類尚無資料</td></tr>`;
+        <td class="px-4 py-2.5 whitespace-nowrap"><button type="button" class="btn-tc-edit text-xs px-2 py-1 rounded border border-slate-300 text-slate-500 hover:bg-slate-50" data-tax-id="${esc(t.id)}">編輯</button></td>
+      </tr>`;
+    }).join('') || `<tr><td class="px-4 py-4 text-center text-slate-400" colspan="10">此分類尚無資料</td></tr>`;
 
     document.querySelectorAll('.tax-owner-select').forEach((sel) => {
       sel.addEventListener('change', (e) => {
         const t = taxCases.find((x) => x.id === e.target.dataset.taxId);
         if (t) { t.taxOwner = e.target.value; persistAll(); renderTaxCasesTable(); }
       });
+    });
+    document.querySelectorAll('.btn-tc-edit').forEach((btn) => {
+      btn.addEventListener('click', () => { editingTaxCaseId = btn.dataset.taxId; renderTaxCasesTable(); });
+    });
+    document.querySelectorAll('.btn-tc-cancel').forEach((btn) => {
+      btn.addEventListener('click', () => { editingTaxCaseId = null; renderTaxCasesTable(); });
+    });
+    document.querySelectorAll('.tc-calc-withholding').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const row = btn.closest('tr');
+        const totalInput = row.querySelector('.tc-contract-total');
+        const withholdingInput = row.querySelector('.tc-withholding-tax');
+        withholdingInput.value = Math.round((Number(totalInput.value) || 0) * WITHHOLDING_TAX_RATE);
+      });
+    });
+    document.querySelectorAll('.btn-tc-save').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const row = btn.closest('tr');
+        const t = taxCases.find((x) => x.id === btn.dataset.taxId);
+        if (!t) return;
+        row.querySelectorAll('.tc-field').forEach((field) => {
+          const key = field.dataset.field;
+          if (field.dataset.type === 'checkbox') { t[key] = field.checked; }
+          else if (field.type === 'number') { t[key] = Number(field.value) || 0; }
+          else { t[key] = field.value; }
+        });
+        editingTaxCaseId = null;
+        persistAll(); renderTaxCasesTable();
+      });
+    });
+  }
+
+  // 2026-07-13 新增：稅務歸屬總表目前沒有新增表單（過去只能改稅務歸屬），補上「+新增稅務案件」
+  function renderTaxCaseForm() {
+    document.getElementById('form-tax-case-wrap').innerHTML = `
+      <form id="form-tax-case" class="bg-slate-50 border border-slate-200 rounded-lg p-4 mt-3 space-y-3">
+        <h4 class="text-sm font-semibold text-slate-700">+ 新增稅務案件</h4>
+        <div class="grid grid-cols-4 gap-2">
+          <label class="text-[11px] text-slate-500 space-y-0.5"><span>分類</span>
+            <select name="yearType" class="w-full text-sm border rounded px-1.5 py-1">
+              <option value="current">當年度申報（現金制-企業客戶）</option>
+              <option value="closed">歷年總表（結案制-個案）</option>
+            </select>
+          </label>
+          <label class="text-[11px] text-slate-500 space-y-0.5"><span>案號</span><input required name="caseNumber" class="w-full text-sm border rounded px-1.5 py-1" /></label>
+          <label class="text-[11px] text-slate-500 space-y-0.5"><span>當事人</span><input required name="person" class="w-full text-sm border rounded px-1.5 py-1" /></label>
+          <label class="text-[11px] text-slate-500 space-y-0.5"><span>客戶類型</span>
+            <select name="clientType" class="w-full text-sm border rounded px-1.5 py-1">${CLIENT_TYPES.map((o) => `<option value="${esc(o)}">${esc(o)}</option>`).join('')}</select>
+          </label>
+          <label class="text-[11px] text-slate-500 space-y-0.5"><span>案由</span><input name="cause" class="w-full text-sm border rounded px-1.5 py-1" /></label>
+          <label class="text-[11px] text-slate-500 space-y-0.5"><span>所屬法院</span><input name="court" placeholder="士林地方法院" class="w-full text-sm border rounded px-1.5 py-1" /></label>
+          <label class="text-[11px] text-slate-500 space-y-0.5"><span>接案時間（民國年）</span><input name="intakeDate" placeholder="115.01.10" class="w-full text-sm border rounded px-1.5 py-1" /></label>
+          <label class="text-[11px] text-slate-500 space-y-0.5"><span>結案日期（民國年）</span><input name="closedDate" placeholder="115.06.01" class="w-full text-sm border rounded px-1.5 py-1" /></label>
+          <label class="text-[11px] text-slate-500 space-y-0.5"><span>結案文件</span><input name="closingDocument" class="w-full text-sm border rounded px-1.5 py-1" /></label>
+          <label class="text-[11px] text-slate-500 flex items-center gap-1.5 self-end pb-1"><input type="checkbox" name="invoiceIncludesTax" /><span>發票含稅</span></label>
+          <label class="text-[11px] text-slate-500 space-y-0.5"><span>簽約總額（發票金額，未稅）</span><input type="number" min="0" name="contractTotal" value="0" class="w-full text-sm border rounded px-1.5 py-1" /></label>
+          <label class="text-[11px] text-slate-500 space-y-0.5"><span>已收期款</span><input type="number" min="0" name="receivedInstallments" value="0" class="w-full text-sm border rounded px-1.5 py-1" /></label>
+          <label class="text-[11px] text-slate-500 space-y-0.5"><span>未收尾款</span><input type="number" min="0" name="unreceivedBalance" value="0" class="w-full text-sm border rounded px-1.5 py-1" /></label>
+          <label class="text-[11px] text-slate-500 space-y-0.5"><span>代墊費用</span><input type="number" min="0" name="advancedExpenses" value="0" class="w-full text-sm border rounded px-1.5 py-1" /></label>
+          <label class="text-[11px] text-slate-500 space-y-0.5"><span>代扣稅額（可留空，稍後編輯時試算）</span><input type="number" min="0" name="withholdingTax" value="0" class="w-full text-sm border rounded px-1.5 py-1" /></label>
+          <label class="text-[11px] text-slate-500 space-y-0.5"><span>稅務實際歸屬</span>
+            <select name="taxOwner" class="w-full text-sm border rounded px-1.5 py-1">${TAX_OWNER_OPTIONS.map((o) => `<option value="${esc(o)}">${esc(o)}</option>`).join('')}</select>
+          </label>
+        </div>
+        <button class="text-sm px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700 w-fit">+ 新增稅務案件</button>
+      </form>`;
+    document.getElementById('form-tax-case').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      if (!String(fd.get('caseNumber')).trim() || !String(fd.get('person')).trim()) return;
+      taxCases.push({
+        id: 't' + Date.now(), yearType: fd.get('yearType'), caseNumber: fd.get('caseNumber'), person: fd.get('person'),
+        clientType: fd.get('clientType'), cause: fd.get('cause') || '', court: fd.get('court') || '',
+        intakeDate: fd.get('intakeDate') || '', closedDate: fd.get('closedDate') || '', closingDocument: fd.get('closingDocument') || '',
+        invoiceIncludesTax: fd.get('invoiceIncludesTax') === 'on',
+        contractTotal: Number(fd.get('contractTotal')) || 0, receivedInstallments: Number(fd.get('receivedInstallments')) || 0,
+        unreceivedBalance: Number(fd.get('unreceivedBalance')) || 0, advancedExpenses: Number(fd.get('advancedExpenses')) || 0,
+        withholdingTax: Number(fd.get('withholdingTax')) || 0, taxOwner: fd.get('taxOwner'),
+      });
+      persistAll(); e.target.reset(); renderTaxCasesTable();
     });
   }
 
@@ -1449,8 +2096,11 @@
   });
   document.getElementById('btn-export-csv').addEventListener('click', () => {
     const rows = taxCaseRows();
-    const header = ['案號', '當事人', '簽約總額', '已收期款', '未收尾款', '代墊費用', '稅務實際歸屬'];
-    const csvLines = [header.join(',')].concat(rows.map((t) => [t.caseNumber, t.person, t.contractTotal, t.receivedInstallments, t.unreceivedBalance, t.advancedExpenses, t.taxOwner].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')));
+    const header = ['案號', '當事人', '客戶類型', '案由', '所屬法院', '接案時間', '結案日期', '結案文件', '發票含稅', '簽約總額', '已收期款', '未收尾款', '代墊費用', '代扣稅額', '稅務實際歸屬'];
+    const csvLines = [header.join(',')].concat(rows.map((t) => [
+      t.caseNumber, t.person, t.clientType, t.cause, t.court, t.intakeDate, t.closedDate, t.closingDocument,
+      t.invoiceIncludesTax ? '是' : '否', t.contractTotal, t.receivedInstallments, t.unreceivedBalance, t.advancedExpenses, t.withholdingTax, t.taxOwner,
+    ].map((v) => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`).join(',')));
     const blob = new Blob(['﻿' + csvLines.join('\n')], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1458,17 +2108,158 @@
     document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
   });
 
+  // 2026-07-13 新增：一鍵匯出「報稅結案表」Excel（企業客戶 + 結案 兩分頁，比照事務所報稅例稿格式）
+  document.getElementById('btn-export-tax-xlsx').addEventListener('click', () => {
+    const enterpriseRows = taxCases.filter((t) => t.yearType === 'current');
+    const closedRows = taxCases.filter((t) => t.yearType === 'closed');
+
+    const enterpriseHeader = ['編號', '客戶名稱', '案由', '所屬法院', '案號', '接案時間', '結案日期', '結案文件', '發票含稅', '發票金額', '實收金額', '代扣稅額', '客戶類型', '稅務實際歸屬'];
+    const enterpriseAOA = [enterpriseHeader].concat(enterpriseRows.map((t, i) => [
+      i + 1, t.person, t.cause, t.court, t.caseNumber, t.intakeDate, t.closedDate, t.closingDocument,
+      t.invoiceIncludesTax ? '是' : '否', t.contractTotal, t.receivedInstallments, t.withholdingTax, t.clientType, t.taxOwner,
+    ]));
+    const enterpriseTotalRow = enterpriseRows.length + 2; // 1 為標題列，資料從第2列開始
+    const enterpriseInvoiceSum = enterpriseRows.reduce((s, t) => s + (Number(t.contractTotal) || 0), 0);
+    const enterpriseReceivedSum = enterpriseRows.reduce((s, t) => s + (Number(t.receivedInstallments) || 0), 0);
+    const enterpriseWithholdingSum = enterpriseRows.reduce((s, t) => s + (Number(t.withholdingTax) || 0), 0);
+    enterpriseAOA.push(['', '合計', '', '', '', '', '', '', '', null, null, null, '', '']);
+
+    const closedHeader = ['編號', '客戶名稱', '案由', '所屬法院', '案號', '結案日期', '結案文件', '金額', '代扣稅額', '客戶類型', '稅務實際歸屬'];
+    const closedAOA = [closedHeader].concat(closedRows.map((t, i) => [
+      i + 1, t.person, t.cause, t.court, t.caseNumber, t.closedDate, t.closingDocument, t.contractTotal, t.withholdingTax, t.clientType, t.taxOwner,
+    ]));
+    const closedTotalRow = closedRows.length + 2;
+    const closedAmountSum = closedRows.reduce((s, t) => s + (Number(t.contractTotal) || 0), 0);
+    const closedWithholdingSum = closedRows.reduce((s, t) => s + (Number(t.withholdingTax) || 0), 0);
+    closedAOA.push(['', '合計', '', '', '', '', '', null, null, '', '']);
+
+    const wsEnterprise = XLSX.utils.aoa_to_sheet(enterpriseAOA);
+    // aoa_to_sheet 只吃原始值，公式儲存格要在建好的 worksheet 上直接補（且要附上快取值 v，不然存檔後公式會消失）
+    wsEnterprise[`J${enterpriseTotalRow}`] = { t: 'n', f: `SUM(J2:J${enterpriseTotalRow - 1})`, v: enterpriseInvoiceSum };
+    wsEnterprise[`K${enterpriseTotalRow}`] = { t: 'n', f: `SUM(K2:K${enterpriseTotalRow - 1})`, v: enterpriseReceivedSum };
+    wsEnterprise[`L${enterpriseTotalRow}`] = { t: 'n', f: `SUM(L2:L${enterpriseTotalRow - 1})`, v: enterpriseWithholdingSum };
+
+    const wsClosed = XLSX.utils.aoa_to_sheet(closedAOA);
+    wsClosed[`H${closedTotalRow}`] = { t: 'n', f: `SUM(H2:H${closedTotalRow - 1})`, v: closedAmountSum };
+    wsClosed[`I${closedTotalRow}`] = { t: 'n', f: `SUM(I2:I${closedTotalRow - 1})`, v: closedWithholdingSum };
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, wsEnterprise, '企業客戶');
+    XLSX.utils.book_append_sheet(wb, wsClosed, '結案');
+    XLSX.writeFile(wb, `報稅結案表_${TODAY}.xlsx`);
+  });
+
   function renderBilling() {
     renderTaxCasesTable();
+    const advanceSel = document.querySelector('#form-billing select[name=advanceStatus]');
+    if (advanceSel && !advanceSel.options.length) advanceSel.innerHTML = ADVANCE_STATUSES.map((s) => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
     document.getElementById('billing-table-body').innerHTML = billing.map((b) => `
-      <tr class="hover:bg-slate-50"><td class="px-5 py-3 font-mono text-xs">${esc(b.date)}</td><td class="px-5 py-3">${esc(b.item)}</td><td class="px-5 py-3">NT$ ${Number(b.amount).toLocaleString()}</td>
-      <td class="px-5 py-3">${b.billed ? '<span class="text-emerald-600 text-xs">已請款</span>' : '<span class="text-amber-600 text-xs">未請款</span>'}</td></tr>
-    `).join('') || '<tr><td class="px-5 py-4 text-slate-400" colspan="4">尚無代墊款紀錄</td></tr>';
+      <tr class="hover:bg-slate-50">
+        <td class="px-5 py-3 font-mono text-xs">${esc(b.date)}</td>
+        <td class="px-5 py-3 font-mono text-xs">${esc(b.caseNumber) || '—'}</td>
+        <td class="px-5 py-3">${esc(b.item)}</td>
+        <td class="px-5 py-3">NT$ ${Number(b.amount).toLocaleString()}</td>
+        <td class="px-5 py-3">
+          <select data-billing-id="${esc(b.id)}" class="billing-status-select text-xs border rounded px-1.5 py-1 ${ADVANCE_STATUS_BADGE[b.advanceStatus] || ''}">
+            ${ADVANCE_STATUSES.map((s) => `<option value="${esc(s)}" ${b.advanceStatus === s ? 'selected' : ''}>${esc(s)}</option>`).join('')}
+          </select>
+        </td>
+      </tr>
+    `).join('') || '<tr><td class="px-5 py-4 text-slate-400" colspan="5">尚無代墊款紀錄</td></tr>';
+    document.querySelectorAll('.billing-status-select').forEach((sel) => {
+      sel.addEventListener('change', (e) => {
+        const b = billing.find((x) => x.id === e.target.dataset.billingId);
+        if (b) { b.advanceStatus = e.target.value; persistAll(); renderBilling(); }
+      });
+    });
+    renderReceivablesSummary();
+    renderCaseSpendingSummary();
+    renderRetainerContracts();
   }
   document.getElementById('form-billing').addEventListener('submit', (e) => {
     e.preventDefault(); const fd = new FormData(e.target);
-    billing.push({ id: 'b' + Date.now(), date: fd.get('date'), item: fd.get('item'), amount: Number(fd.get('amount')) || 0, billed: fd.get('billed') === 'on' });
+    billing.push({
+      id: 'b' + Date.now(), date: fd.get('date'), caseNumber: fd.get('caseNumber') || '', item: fd.get('item'),
+      amount: Number(fd.get('amount')) || 0, advanceStatus: fd.get('advanceStatus') || ADVANCE_STATUSES[0],
+    });
     persistAll(); e.target.reset(); renderBilling();
+  });
+
+  // 2026-07-13 會議新增：應收款項總覽（依案件列表的 receivable 欄位加總，不另存資料）
+  function renderReceivablesSummary() {
+    const body = document.getElementById('receivables-table-body');
+    const foot = document.getElementById('receivables-table-foot');
+    if (!body) return;
+    const rows = cases.filter((c) => Number(c.receivable) > 0).sort((a, b) => Number(b.receivable) - Number(a.receivable));
+    body.innerHTML = rows.map((c) => `
+      <tr class="hover:bg-slate-50"><td class="px-5 py-2 font-mono text-xs">${esc(c.caseNumber)}</td><td class="px-5 py-2">${esc(c.title)}</td><td class="px-5 py-2 text-slate-500">${esc(c.attorney)}</td><td class="px-5 py-2">NT$ ${Number(c.receivable).toLocaleString()}</td></tr>
+    `).join('') || '<tr><td class="px-5 py-3 text-slate-400" colspan="4">目前沒有應收款項（在「案件與時效」頁的案件列表可直接填寫）</td></tr>';
+    const total = rows.reduce((s, c) => s + Number(c.receivable), 0);
+    foot.innerHTML = rows.length ? `<tr class="font-semibold border-t border-slate-200"><td class="px-5 py-2" colspan="3">合計</td><td class="px-5 py-2">NT$ ${total.toLocaleString()}</td></tr>` : '';
+  }
+
+  // 2026-07-13 會議新增：各案件花費總覽（沿用代墊款登記，依案號自動加總）
+  function computeCaseSpendingSummary() {
+    const groups = {};
+    billing.forEach((b) => {
+      const key = (b.caseNumber || '').trim();
+      if (!key) return;
+      if (!groups[key]) groups[key] = { caseNumber: key, total: 0, count: 0 };
+      groups[key].total += Number(b.amount) || 0;
+      groups[key].count += 1;
+    });
+    return Object.values(groups).sort((a, b) => b.total - a.total);
+  }
+  function renderCaseSpendingSummary() {
+    const body = document.getElementById('case-spending-table-body');
+    if (!body) return;
+    const rows = computeCaseSpendingSummary();
+    body.innerHTML = rows.map((r) => `
+      <tr class="hover:bg-slate-50"><td class="px-5 py-2 font-mono text-xs">${esc(r.caseNumber)}</td><td class="px-5 py-2">NT$ ${r.total.toLocaleString()}</td><td class="px-5 py-2 text-slate-500">${r.count} 筆</td></tr>
+    `).join('') || '<tr><td class="px-5 py-3 text-slate-400" colspan="3">代墊款登記尚未填寫案號，暫無法加總</td></tr>';
+  }
+
+  // 2026-07-13 會議新增：法律顧問契約到期提醒（到期前1個月提醒到期、到期前15天提醒換約）
+  function retainerContractStatus(endDate) {
+    const remain = daysUntil(endDate);
+    if (remain === null) return { label: '—', cls: 'bg-slate-100 text-slate-500' };
+    if (remain < 0) return { label: `已到期 ${-remain} 天`, cls: 'bg-slate-200 text-slate-600' };
+    if (remain <= 15) return { label: `緊急換約提醒（剩 ${remain} 天）`, cls: 'bg-red-50 text-red-700' };
+    if (remain <= 30) return { label: `即將到期（剩 ${remain} 天）`, cls: 'bg-amber-50 text-amber-700' };
+    return { label: '正常', cls: 'bg-emerald-50 text-emerald-700' };
+  }
+  function renderRetainerContracts() {
+    const body = document.getElementById('retainer-table-body');
+    if (!body) return;
+    const rows = [...retainerContracts].sort((a, b) => (a.endDate || '').localeCompare(b.endDate || ''));
+    body.innerHTML = rows.map((r) => {
+      const status = retainerContractStatus(r.endDate);
+      return `
+      <tr class="hover:bg-slate-50">
+        <td class="px-5 py-3">${esc(r.clientName)}</td>
+        <td class="px-5 py-3 font-mono text-xs">${esc(r.startDate) || '—'}</td>
+        <td class="px-5 py-3 font-mono text-xs">${esc(r.endDate) || '—'}</td>
+        <td class="px-5 py-3">${r.amount ? 'NT$ ' + Number(r.amount).toLocaleString() : '—'}</td>
+        <td class="px-5 py-3"><span class="text-xs px-2 py-0.5 rounded-full ${status.cls}">${esc(status.label)}</span></td>
+        <td class="px-5 py-3 text-slate-500 text-xs">${esc(r.note) || '—'}</td>
+        <td class="px-5 py-3"><button type="button" class="btn-retainer-delete text-xs px-2 py-1 rounded border border-slate-300 text-slate-500 hover:bg-slate-50" data-retainer-id="${esc(r.id)}">刪除</button></td>
+      </tr>`;
+    }).join('') || '<tr><td class="px-5 py-4 text-slate-400" colspan="7">尚無法顧契約紀錄</td></tr>';
+    document.querySelectorAll('.btn-retainer-delete').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        retainerContracts = retainerContracts.filter((r) => r.id !== btn.dataset.retainerId);
+        persistAll(); renderRetainerContracts();
+      });
+    });
+  }
+  document.getElementById('form-retainer').addEventListener('submit', (e) => {
+    e.preventDefault(); const fd = new FormData(e.target);
+    if (!String(fd.get('clientName')).trim() || !fd.get('startDate') || !fd.get('endDate')) return;
+    retainerContracts.push({
+      id: 'rc' + Date.now(), clientName: fd.get('clientName'), startDate: fd.get('startDate'), endDate: fd.get('endDate'),
+      amount: Number(fd.get('amount')) || 0, note: fd.get('note') || '',
+    });
+    persistAll(); e.target.reset(); renderRetainerContracts();
   });
 
   // ==========================================================================
@@ -1554,14 +2345,15 @@
     renderTodoBoard();
     renderClosedCasesPage();
     renderClients();
+    renderIntakeForm();
     renderFilesTable();
     renderBilling();
   }
 
   renderHearingForm();
-  renderActionDeadlineForm();
-  renderGeneralDeadlineForm();
+  renderDeadlineForm();
   renderFileNamingForm();
+  renderTaxCaseForm();
   renderAll();
 
   const initial = (location.hash || '#page-dashboard').slice(1);
