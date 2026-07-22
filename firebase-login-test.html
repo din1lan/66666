@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Firebase Google 登入測試</title>
+  <style>
+    body { font-family: system-ui, "PingFang TC", "Microsoft JhengHei", sans-serif; background:#0f172a; color:#e2e8f0; display:flex; min-height:100vh; margin:0; align-items:center; justify-content:center; padding:20px; }
+    .card { background:#1e293b; border:1px solid #334155; border-radius:14px; padding:28px; max-width:460px; width:100%; }
+    h1 { font-size:18px; margin:0 0 6px; }
+    p { font-size:13px; color:#94a3b8; line-height:1.7; margin:6px 0; }
+    button { font-size:15px; padding:11px 18px; border-radius:8px; border:0; cursor:pointer; margin-top:14px; }
+    #btn-login { background:#2563eb; color:#fff; width:100%; }
+    #btn-logout { background:#475569; color:#fff; }
+    #status { margin-top:18px; padding:14px; border-radius:8px; font-size:14px; line-height:1.7; word-break:break-all; }
+    .ok { background:#064e3b; border:1px solid #10b981; color:#a7f3d0; }
+    .err { background:#7f1d1d; border:1px solid #ef4444; color:#fecaca; }
+    .info { background:#1e3a5f; border:1px solid #3b82f6; color:#bfdbfe; }
+    code { background:#0f172a; padding:1px 5px; border-radius:4px; font-size:12px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🔥 Firebase Google 登入測試</h1>
+    <p>這是一個獨立的測試頁，只驗證「用 Google 帳號登入、且限 @ialaw.tw 網域」這條路走不走得通。不含任何客戶資料。</p>
+    <p>請從你的 Render 網址開這一頁（不能用桌面檔案雙擊開），並確認該網域已加進 Firebase 的「授權網域」。</p>
+    <button id="btn-login">使用 Google 帳號登入</button>
+    <div id="status" class="info">狀態：尚未登入。點上方按鈕試試。</div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
+    import {
+      getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyA8TWldcHNrJqgr1IT-TN53LN0FBm33HrE",
+      authDomain: "lawyer-system-b83f3.firebaseapp.com",
+      projectId: "lawyer-system-b83f3",
+      storageBucket: "lawyer-system-b83f3.firebasestorage.app",
+      messagingSenderId: "327881419886",
+      appId: "1:327881419886:web:e8fb44bfe588f660cd8a7f"
+    };
+
+    const ALLOWED_DOMAIN = "ialaw.tw"; // 只允許事務所網域登入
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const statusEl = document.getElementById("status");
+    const btnLogin = document.getElementById("btn-login");
+
+    function setStatus(cls, html) { statusEl.className = cls; statusEl.innerHTML = html; }
+
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ hd: ALLOWED_DOMAIN }); // 提示只選 @ialaw.tw 帳號
+
+    btnLogin.addEventListener("click", async () => {
+      setStatus("info", "狀態：開啟 Google 登入視窗中…");
+      try {
+        const result = await signInWithPopup(auth, provider);
+        const email = result.user.email || "";
+        if (!email.toLowerCase().endsWith("@" + ALLOWED_DOMAIN)) {
+          await signOut(auth);
+          setStatus("err", `⛔ 這個帳號不是 @${ALLOWED_DOMAIN}（你用了 <code>${email}</code>），已自動登出。正式系統只有事務所網域能登入。`);
+          return;
+        }
+        setStatus("ok", `✅ 登入成功！<br>Email：<code>${email}</code><br>顯示名稱：${result.user.displayName || "（無）"}<br><br>代表整條 Google 登入鏈在這個網址上是通的，可以接進主系統了。`);
+      } catch (e) {
+        let hint = "";
+        if (String(e.code) === "auth/unauthorized-domain") {
+          hint = `<br><br>👉 這代表目前這個網址還沒加進 Firebase 授權網域。到 <b>Authentication → 設定 → 授權網域 → 新增網域</b>，把目前網址列的網域加進去（例如 <code>${location.hostname}</code>）。`;
+        } else if (String(e.code) === "auth/popup-blocked") {
+          hint = "<br><br>👉 瀏覽器擋了彈出視窗，請允許此站的彈出視窗再試。";
+        } else if (String(e.code) === "auth/operation-not-allowed") {
+          hint = "<br><br>👉 Google 登入方式可能沒開，到 Authentication → Sign-in method 確認 Google 已啟用。";
+        }
+        setStatus("err", `⚠️ 登入失敗：<code>${e.code || e.message}</code>${hint}`);
+      }
+    });
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setStatus("ok", `目前已登入：<code>${user.email}</code>（重新整理仍記得）。要換帳號請先按下方登出。<br><button id="btn-logout">登出</button>`);
+        const bl = document.getElementById("btn-logout");
+        if (bl) bl.addEventListener("click", () => signOut(auth).then(() => location.reload()));
+      }
+    });
+  </script>
+</body>
+</html>
