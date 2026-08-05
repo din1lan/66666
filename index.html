@@ -260,24 +260,7 @@
           <div id="dash-upcoming" class="space-y-2 text-sm"></div>
         </div>
 
-        <div class="bg-white rounded-lg border border-slate-200 p-5">
-          <h3 class="font-semibold text-slate-800 mb-2">本次建置完成的三項功能</h3>
-          <ol class="text-sm text-slate-600 space-y-1.5 list-decimal list-inside">
-            <li><b>開庭行事曆 + 末日提醒自動化</b>（案件與時效頁）— 依當事人/律師/法院/案號自動組合行事曆標題，末日遇假日自動順延，並自動加開提前提醒。</li>
-            <li><b>檔名產生器</b>（線上卷宗頁）— 依事務所檔名規則自動組成建議檔名，AI 讀圖判讀暫未啟用（待確認 Anthropic API 預算與 Firebase Blaze 升級）。</li>
-            <li><b>結案案件表</b>（結案案件表頁）— 已從 Google Sheet 匯入 129 筆歷史結案紀錄，往後新結案請直接在網站登記，不用再改 Sheet。</li>
-          </ol>
-          <div class="mt-4 text-xs bg-amber-50 border border-amber-200 rounded p-3 text-amber-900 space-y-1">
-            <div class="font-medium">還缺一件事才能匯入其他 Sheet 分頁：</div>
-            <div>Google Sheet 除了結案簡表，還有送達憑證／筆錄調閱紀錄／諮詢案件等分頁沒有連結可以匯入，如果也要匯入，需要您提供對應網址（或分頁的 gid）。</div>
-          </div>
-          <div class="mt-2 text-xs bg-emerald-50 border border-emerald-200 rounded p-3 text-emerald-900 space-y-1">
-            <div class="font-medium">已確認的決策：</div>
-            <div>✓ 提前提醒天數表：2026-07-08 已確認採分級表版本（14~20日→提前5日），原始範例文字「提前20日」認定為誤植。</div>
-            <div>✓ 國定假日表已補上 2026 年（36天，來源：行政院人事總處115年辦公日曆表），末日順延會正確跳過平日國定假日；2026 以外年度仍是空的，每年年初要記得補。</div>
-            <div>✓ AI 讀檔／Firebase Blaze 升級：您選擇先不開通，等其他事項都弄好再說。</div>
-          </div>
-        </div>
+
       </section>
 
       <!-- ============ 新增接案（統一開案入口，2026-07-14 四次會議：與舊「開案一站式表單」完整整合） ============ -->
