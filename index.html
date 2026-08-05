@@ -76,13 +76,9 @@
             <span>身分角色</span>
             <select id="login-role-select" name="userId" class="w-full text-sm border rounded px-3 py-2"></select>
           </label>
-          <label id="login-password-field" class="text-xs text-slate-500 space-y-1 block">
-            <span>密碼</span>
-            <input type="password" name="password" placeholder="請輸入密碼" class="w-full text-sm border rounded px-3 py-2" />
-          </label>
           <div id="login-error" class="hidden text-xs text-red-600"></div>
           <button class="w-full text-sm px-4 py-2.5 rounded bg-navy-900 text-white hover:bg-navy-800 font-medium">進入系統</button>
-          <p id="login-demo-hint" class="text-[11px] text-slate-400 pt-1">示範密碼：所有角色皆為 <span class="font-mono">88888888</span>（正式使用前請到程式碼 USERS 設定處更改）</p>
+          <p id="login-demo-hint" class="text-[11px] text-slate-400 pt-1">請先用上方「使用 Google 帳號登入」（限 @ialaw.tw），再選身分進入。</p>
         </form>
         <div id="signup-panel" class="hidden text-sm text-slate-600 space-y-3">
           <p>新帳號請洽主持律師或系統管理者於程式碼 <span class="font-mono text-xs bg-slate-100 px-1 py-0.5 rounded">USERS</span> 清單中新增，本預覽尚未開放線上自助註冊。</p>
@@ -428,17 +424,17 @@
           <div id="form-deadline-wrap"></div>
         </div>
 
-        <div class="bg-white rounded-lg border border-slate-200 p-5">
+        <div class="bg-white rounded-lg border border-slate-200 p-2.5 md:p-5">
           <h3 class="font-semibold text-slate-800 mb-3">開庭行事曆</h3>
-          <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
             <div class="flex items-center gap-2">
-              <button id="cal-prev" class="w-7 h-7 rounded border border-slate-200 hover:bg-slate-50">‹</button>
+              <button id="cal-prev" class="w-9 h-9 md:w-7 md:h-7 rounded border border-slate-200 hover:bg-slate-50">‹</button>
               <span id="cal-label" class="text-sm font-medium w-28 text-center"></span>
-              <button id="cal-next" class="w-7 h-7 rounded border border-slate-200 hover:bg-slate-50">›</button>
+              <button id="cal-next" class="w-9 h-9 md:w-7 md:h-7 rounded border border-slate-200 hover:bg-slate-50">›</button>
             </div>
-            <span class="text-xs text-slate-400">灰底 = 有開庭或末日提醒事件</span>
+            <span class="text-[11px] text-slate-400">灰底＝有事件，點該日可看完整內容</span>
           </div>
-          <div id="calendar-grid" class="grid grid-cols-7 gap-1 text-xs"></div>
+          <div id="calendar-grid" class="grid grid-cols-7 gap-0.5 md:gap-1 text-xs"></div>
         </div>
 
         <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
@@ -854,8 +850,8 @@
             <label class="text-xs text-slate-500 space-y-1"><span>最近健檢日（選填，用於下次到期試算）</span><input type="date" name="lastHealthCheck" class="w-full text-sm border rounded px-2 py-1.5" /></label>
             <label class="text-xs text-slate-500 space-y-1 md:col-span-2"><span>通訊地址</span><input name="mailingAddress" class="w-full text-sm border rounded px-2 py-1.5" /></label>
             <label class="text-xs text-slate-500 space-y-1"><span>月薪（記錄用）</span><input type="number" min="0" name="salary" class="w-full text-sm border rounded px-2 py-1.5" /></label>
-            <label class="text-xs text-slate-500 space-y-1"><span>勞保投保級距（記錄用）</span><input name="laborInsurance" class="w-full text-sm border rounded px-2 py-1.5" /></label>
-            <label class="text-xs text-slate-500 space-y-1"><span>健保投保級距（記錄用）</span><input name="healthInsurance" class="w-full text-sm border rounded px-2 py-1.5" /></label>
+            <label class="text-xs text-slate-500 space-y-1"><span>勞保投保薪資（填月薪自動帶出，可改）</span><input name="laborInsurance" class="w-full text-sm border rounded px-2 py-1.5" /></label>
+            <label class="text-xs text-slate-500 space-y-1"><span>健保投保金額（填月薪自動帶出，可改）</span><input name="healthInsurance" class="w-full text-sm border rounded px-2 py-1.5" /></label>
             <label class="text-xs text-slate-500 space-y-1"><span>受薪銀行</span><input name="payBank" class="w-full text-sm border rounded px-2 py-1.5" /></label>
             <label class="text-xs text-slate-500 space-y-1"><span>發薪帳號</span><input name="payAccount" class="w-full text-sm border rounded px-2 py-1.5" /></label>
             <label class="text-xs text-slate-500 space-y-1"><span>緊急聯絡人</span><input name="emergencyName" class="w-full text-sm border rounded px-2 py-1.5" /></label>
@@ -1170,7 +1166,6 @@
     { fullName: '丁穩勝律師', calendarLabel: '丁穩勝律師' },
     { fullName: '程立全律師', calendarLabel: '程立全律師' },
     { fullName: '王雅楨律師', calendarLabel: '王雅楨律師' },
-    { fullName: '林紫彤律師', calendarLabel: '林紫彤律師' },
     { fullName: '陳愷閎律師', calendarLabel: '陳愷閎律師' },
   ];
   function calendarLabelFor(fullName) {
@@ -1191,13 +1186,12 @@
   // 純前端 localStorage 區隔顯示用，非正式資安等級；正式使用前請至此處更改密碼或串接真實驗證系統
   // 2026-07-22 更新：實際 6 位使用者（2 主持律師 + 2 律師 + 1 財務 + 1 行政）
   const USERS = [
-    { id: 'ding', name: '丁穩勝', roleLabel: '主持律師', roleGroup: 'boss', password: '88888888', attorneyFullName: '丁穩勝律師', canSeeFinance: true },
-    { id: 'cheng', name: '程立全', roleLabel: '主持律師', roleGroup: 'boss', password: '88888888', attorneyFullName: '程立全律師', canSeeFinance: true },
-    { id: 'wang', name: '王雅楨', roleLabel: '律師', roleGroup: 'lawyer', password: '88888888', attorneyFullName: '王雅楨律師', canSeeFinance: false },
-    { id: 'lin', name: '林紫彤', roleLabel: '律師', roleGroup: 'lawyer', password: '88888888', attorneyFullName: '林紫彤律師', canSeeFinance: false },
-    { id: 'chen', name: '陳愷閎', roleLabel: '律師', roleGroup: 'lawyer', password: '88888888', attorneyFullName: '陳愷閎律師', canSeeFinance: false },
-    { id: 'finance', name: '李筱萱', roleLabel: '財務', roleGroup: 'finance', password: '88888888', attorneyFullName: null, canSeeFinance: true },
-    { id: 'assistant', name: '趙宥維', roleLabel: '行政', roleGroup: 'assistant', password: '88888888', attorneyFullName: null, canSeeFinance: false },
+    { id: 'ding', name: '丁穩勝', roleLabel: '主持律師', roleGroup: 'boss', attorneyFullName: '丁穩勝律師', canSeeFinance: true },
+    { id: 'cheng', name: '程立全', roleLabel: '主持律師', roleGroup: 'boss', attorneyFullName: '程立全律師', canSeeFinance: true },
+    { id: 'wang', name: '王雅楨', roleLabel: '律師', roleGroup: 'lawyer', attorneyFullName: '王雅楨律師', canSeeFinance: false },
+    { id: 'chen', name: '陳愷閎', roleLabel: '律師', roleGroup: 'lawyer', attorneyFullName: '陳愷閎律師', canSeeFinance: false },
+    { id: 'finance', name: '李筱萱', roleLabel: '財務', roleGroup: 'finance', attorneyFullName: null, canSeeFinance: true },
+    { id: 'assistant', name: '趙宥維', roleLabel: '行政', roleGroup: 'assistant', attorneyFullName: null, canSeeFinance: false },
   ];
   function findUser(id) { return USERS.find((u) => u.id === id) || null; }
 
@@ -1258,7 +1252,7 @@
   // ---- taiwanHolidays.js ----
   // 115年（2026）國定假日，來源：行政院人事行政總處「115年政府行政機關辦公
   // 日曆表」，共36天。2026 以外年度仍是空白，需每年年初手動補上。
-  const HOLIDAYS_STATUS = 'PARTIAL_2026_FILLED';
+  const HOLIDAYS_STATUS = 'FILLED_2026_2027';
   const HOLIDAYS = [
     '2026-01-01',
     '2026-02-14', '2026-02-15', '2026-02-16', '2026-02-17', '2026-02-18',
@@ -1271,6 +1265,19 @@
     '2026-10-09', '2026-10-10', '2026-10-11',
     '2026-10-24', '2026-10-25', '2026-10-26',
     '2026-12-25', '2026-12-26', '2026-12-27',
+    // 2027（民國116年）——行政院人事行政總處 116 年辦公日曆表；全年 0 補班
+    '2027-01-01',
+    '2027-02-04', '2027-02-05', '2027-02-06', '2027-02-07', '2027-02-08', '2027-02-09', '2027-02-10',
+    '2027-02-27', '2027-02-28', '2027-03-01',
+    '2027-04-03', '2027-04-04', '2027-04-05', '2027-04-06',
+    '2027-04-30', '2027-05-01', '2027-05-02',
+    '2027-06-09',
+    '2027-09-15',
+    '2027-09-28',
+    '2027-10-09', '2027-10-10', '2027-10-11',
+    '2027-10-23', '2027-10-24', '2027-10-25',
+    '2027-12-24', '2027-12-25', '2027-12-26',
+    '2027-12-31',
   ];
   function toISO(dateOrISO) {
     if (typeof dateOrISO === 'string') return dateOrISO;
@@ -1493,7 +1500,7 @@
   const SEED_RETAINER_CONTRACTS = [];
 
   // 2026-07-09 會議新增：稅務歸屬總表（企業客戶現金制 vs 律師掛名個案結案制）
-  const TAX_OWNER_OPTIONS = ['歸屬丁穩勝律師', '歸屬程立全律師', '歸屬王雅楨律師', '歸屬林紫彤律師', '歸屬陳愷閎律師', '平行單位合辦（各半）', '義務案件（免稅）'];
+  const TAX_OWNER_OPTIONS = ['歸屬丁穩勝律師', '歸屬程立全律師', '歸屬王雅楨律師', '歸屬陳愷閎律師', '平行單位合辦（各半）', '義務案件（免稅）'];
   // 2026-07-13 新增：參考「113結案表(報稅)例稿」補上的欄位
   const CLIENT_TYPES = ['企業客戶', '個人客戶'];
   const WITHHOLDING_TAX_RATE = 0.1; // 發票金額（未稅）× 10%，無免稅門檻（丁一朗確認）
@@ -1545,7 +1552,7 @@
   // 客戶請款/律師酬勞績效示範用工時記錄（對應既有 SEED_CASES 案號）
   const SEED_CASE_HOURS = [];
   // 分潤率為所內設定，非既有真實資料，預設值可自行調整（會記住於本機）
-  const DEFAULT_PROFIT_SHARE_RATES = { 丁穩勝律師: 50, 程立全律師: 50, 王雅楨律師: 40, 林紫彤律師: 40, 陳愷閎律師: 40 };
+  const DEFAULT_PROFIT_SHARE_RATES = { 丁穩勝律師: 50, 程立全律師: 50, 王雅楨律師: 40, 陳愷閎律師: 40 };
   // 獨立待辦任務指派（不綁開庭/期限，示範資料以 TODAY='2026-07-08' 為基準）
   const SEED_TASKS = [];
 
@@ -1553,7 +1560,7 @@
   // 2026-07-14 會議新增：零用金管理獨立分頁的種子資料
   // 2026-07-14 三次會議：零用金頁改為「零用金與律師個人帳管理」，經手人欄位改為「請款人」（韋里/立權/凱虹/宥維），
   // 並新增「摘要分類」欄位（車資/餐費/代墊款/其他）
-  const PETTY_CASH_CLAIMANTS = ['丁穩勝', '程立全', '王雅楨', '林紫彤', '陳愷閎', '李筱萱', '趙宥維'];
+  const PETTY_CASH_CLAIMANTS = ['丁穩勝', '程立全', '王雅楨', '陳愷閎', '李筱萱', '趙宥維'];
   const PETTY_CASH_CATEGORIES = ['車資', '餐費', '代墊款', '其他'];
   // 2026-07-22 三次會議：憑證類型固定四選項
   const PETTY_CASH_VOUCHER_TYPES = ['發票', '收據', '明細', '無單據'];
@@ -2716,7 +2723,7 @@
           <label class="text-xs text-slate-500 space-y-1"><span>提前提醒天數（留空 = 自動）</span><input type="number" min="0" name="advanceOverride" class="w-full text-sm border rounded px-2 py-1.5" /></label>
         </div>
         <div class="text-xs bg-emerald-50 border border-emerald-200 rounded p-3 text-emerald-900">✓ 提前提醒天數表已於 2026-07-08 由事務所確認：14~20日限期採分級表版本（提前5日），原始範例文字「提前20日」認定為誤植，不採用。表單中仍可手動覆寫個案的提前天數。</div>
-        <div class="text-xs bg-amber-50 border border-amber-200 rounded p-3 text-amber-900">⚠️ 國定假日表已填入 2026 年（36天，來源：行政院人事總處115年辦公日曆表），但 2026 以外年度仍是空白，跨年度使用前務必請事務所補上當年度假日。</div>
+        <div class="text-xs bg-amber-50 border border-amber-200 rounded p-3 text-amber-900">✓ 國定假日表已填入 2026（民國115年）與 2027（民國116年，全年0補班），來源：行政院人事行政總處辦公日曆表。跨到 2028 年以後使用前，再請補上當年度假日。</div>
         <div id="deadline-preview" class="text-sm bg-slate-50 border border-slate-200 rounded p-3 space-y-1 hidden"></div>
         <button class="text-sm px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700">儲存為草稿（末日 + 提醒各一筆）</button>
       </form>`;
@@ -3014,7 +3021,7 @@
   // ==========================================================================
   function attorneyCounts() {
     const counts = { 全部: closedCases.length };
-    ['丁穩勝律師', '程立全律師', '王雅楨律師', '林紫彤律師', '陳愷閎律師'].forEach((a) => { counts[a] = closedCases.filter((c) => c.attorney === a).length; });
+    ['丁穩勝律師', '程立全律師', '王雅楨律師', '陳愷閎律師'].forEach((a) => { counts[a] = closedCases.filter((c) => c.attorney === a).length; });
     return counts;
   }
 
@@ -3035,7 +3042,7 @@
 
   function renderClosedTabs() {
     const counts = attorneyCounts();
-    const tabs = ['全部', '丁穩勝律師', '程立全律師', '王雅楨律師', '林紫彤律師', '陳愷閎律師'];
+    const tabs = ['全部', '丁穩勝律師', '程立全律師', '王雅楨律師', '陳愷閎律師'];
     document.getElementById('closed-tabs').innerHTML = tabs.map((t) => `
       <button data-tab="${esc(t)}" class="closed-tab-btn text-sm px-3 py-1.5 rounded-full border ${closedTabFilter === t ? 'bg-navy-900 text-white border-navy-900' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}">${esc(t)}${t !== '全部' ? ` (${counts[t] || 0})` : ` (${counts['全部']})`}</button>`).join('');
     document.querySelectorAll('.closed-tab-btn').forEach((b) => b.addEventListener('click', () => { closedTabFilter = b.dataset.tab; renderClosedCasesPage(); }));
@@ -4621,7 +4628,20 @@
     try { f.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e2) { /* ignore */ }
   }
   {
+    // 2026-08-04：勞健保投保級距依月薪自動帶出（民國115年/2026 官方分級表；逐年會調整，之後年度需更新這兩個陣列）
+    const LABOR_INS_2026 = [29500, 30300, 31800, 33300, 34800, 36300, 38200, 40100, 42000, 43900, 45800];
+    const NHI_INS_2026 = [29500, 30300, 31800, 33300, 34800, 36300, 38200, 40100, 42000, 43900, 45800, 48200, 50600, 53000, 55400, 57800, 60800, 63800, 66800, 69800, 72800, 76500, 80200, 83900, 87600, 92100, 96600, 101100, 105600, 110100, 115500, 120900, 126300, 131700, 137100, 142500, 147900, 150000, 156400, 162800, 169200, 175600, 182000, 189500, 197000, 204500, 212000, 219500, 228200, 236900, 245600, 254300, 263000, 273000, 283000, 293000, 303000, 313000];
+    function insBracket(salary, table) { const s = Number(salary) || 0; if (s <= 0) return ''; for (let i = 0; i < table.length; i++) { if (s <= table[i]) return table[i]; } return table[table.length - 1]; }
     const formEmp = document.getElementById('form-employee');
+    if (formEmp) {
+      const salIn = formEmp.querySelector('[name=salary]');
+      if (salIn) salIn.addEventListener('input', () => {
+        const s = Number(salIn.value) || 0; if (!s) return;
+        const li = formEmp.querySelector('[name=laborInsurance]'); const hi = formEmp.querySelector('[name=healthInsurance]');
+        if (li) li.value = insBracket(s, LABOR_INS_2026);
+        if (hi) hi.value = insBracket(s, NHI_INS_2026);
+      });
+    }
     if (formEmp) {
       formEmp.addEventListener('submit', (ev) => {
         ev.preventDefault(); const fd = new FormData(ev.target);
@@ -4810,7 +4830,7 @@
     const gBtn = document.getElementById('btn-google-login');
     if (gBlock) gBlock.classList.remove('hidden');
     if (pwField) pwField.classList.add('hidden');       // Google 已驗證事務所身分，不需再輸密碼
-    if (demoHint) demoHint.classList.add('hidden');
+    // demo-hint 現為 Google 登入指示，保持顯示
     gBtn.addEventListener('click', async () => {
       const provider = new firebase.auth.GoogleAuthProvider();
       provider.setCustomParameters({ hd: FB_ALLOWED_DOMAIN });
@@ -4860,13 +4880,9 @@
     const u = findUser(fd.get('userId'));
     const errBox = document.getElementById('login-error');
     if (!u) { errBox.textContent = '請選擇身分角色'; errBox.classList.remove('hidden'); return; }
-    if (fbAuth) {
-      // Firebase 模式：身分驗證交給 Google（限 @ialaw.tw），角色只是檢視切換，不再檢查密碼
-      if (!googleAuthedEmail) { errBox.textContent = '請先用上方「使用 Google 帳號登入」完成事務所身分驗證'; errBox.classList.remove('hidden'); return; }
-    } else {
-      // 無 Firebase 的離線／備援模式：維持原本本機密碼驗證
-      if (fd.get('password') !== u.password) { errBox.textContent = '密碼錯誤（示範密碼為 88888888）'; errBox.classList.remove('hidden'); return; }
-    }
+    // 2026-08-04：只用 @ialaw.tw Google 登入，已移除密碼登入。角色只是檢視切換。
+    if (!fbAuth) { errBox.textContent = '登入服務未就緒，請重新整理頁面再試'; errBox.classList.remove('hidden'); return; }
+    if (!googleAuthedEmail) { errBox.textContent = '請先用上方「使用 Google 帳號登入」（限 @ialaw.tw）完成身分驗證'; errBox.classList.remove('hidden'); return; }
     errBox.classList.add('hidden');
     currentUserId = u.id; saveState('lf_currentUserId', currentUserId);
     e.target.reset(); populateLoginRoleSelect();
